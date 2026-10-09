@@ -97,7 +97,11 @@
   .review ul { margin: 4px 0; padding-left: 18px; } .review p { margin: 4px 0; }
 
   .cat-name { display: flex; flex-direction: column; min-width: 0; }
-  .cat-name small { color: var(--muted); font-size: 12px; }
+  .cat-name small { color: var(--muted); font-size: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 1px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; line-height: 1; padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
+  .pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .pill.off { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+  .bar > i.off { background: var(--muted); opacity: .45; }
   .icon-pick { display: flex; gap: 4px; flex-wrap: wrap; }
   .icon-pick button { padding: 4px 6px; font-size: 18px; background: transparent; }
   .icon-pick button:hover { background: var(--bg); }
@@ -1058,6 +1062,7 @@ window.google = { script: { get run() {
         <p class="muted grow" style="margin:0">Đặt hạn mức tháng cho từng danh mục. Bấm ✏️ để đổi tên, icon, từ khóa nhận diện hoặc xóa.</p>
         <button onclick="openCategory()">+ Thêm danh mục</button>
       </div>
+      <div class="muted" id="budgetStatus" style="margin-top:8px"></div>
       <div id="budgetList"></div>
       <div class="row" style="margin-top:12px">
         <span class="grow muted">Tổng: <b id="budgetTotal" class="num"></b></span>
@@ -1393,8 +1398,8 @@ function renderDash(d) {
     const cls = p > 100 ? 'bad' : p >= 80 ? 'warn' : '';
     return `<div class="cat-row"><div class="row">
         <span>${c.icon}</span><span class="grow">${esc(c.name)}</span>
-        <span class="num"><b>${vnd(c.amount)}</b> <span class="muted">/ ${c.budget ? short(c.budget) : '—'}</span></span></div>
-        <div class="bar"><i class="${cls}" style="width:${Math.min(100, p)}%"></i></div></div>`;
+        <span class="num"><b>${vnd(c.amount)}</b> ${c.budget ? '<span class="muted">/ ' + short(c.budget) + '</span>' : '<span class="pill off">Ngoài ngân sách</span>'}</span></div>
+        <div class="bar"><i class="${c.budget ? cls : 'off'}" style="width:${Math.min(100, p)}%"></i></div></div>`;
   }).join('') || '<div class="empty">Chưa có dữ liệu</div>') + '</div>';
 
   html += '<div class="card"><h2>Chi theo ngày</h2>' + dailyChart(d.daily) + '</div>';
@@ -1535,16 +1540,28 @@ async function renderBudgets() {
     S.catList = await api('getCategoryList');
     $('budgetList').innerHTML = S.catList.map((c, i) => `
       <div class="cat-row row"><span>${esc(c.icon)}</span>
-        <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản</small></span>
+        <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${statusPill(c.budget)}</small></span>
         <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" aria-label="Ngân sách ${esc(c.name)}"
           value="${c.budget.toLocaleString('vi-VN')}" onblur="fmtInput(this)" oninput="updBudgetTotal()">
         <button class="ghost" title="Sửa danh mục" aria-label="Sửa ${esc(c.name)}" onclick="openCategory(${i})">✏️</button></div>`).join('');
     updBudgetTotal();
   } catch (e) { fail(e); }
 }
+/** Trạng thái tự động theo ngân sách: > 0 là đã duyệt, = 0 là ngoài ngân sách. */
+function statusPill(budget) {
+  return budget > 0 ? '<span class="pill ok">Đã duyệt</span>' : '<span class="pill off">Ngoài ngân sách</span>';
+}
 function updBudgetTotal() {
-  const t = Array.from($('budgetList').querySelectorAll('input')).reduce((s, el) => s + digits(el.value), 0);
-  $('budgetTotal').textContent = vnd(t);
+  const inputs = Array.from($('budgetList').querySelectorAll('input'));
+  let approved = 0;
+  inputs.forEach(el => {
+    const b = digits(el.value); if (b > 0) approved++;
+    const pill = el.closest('.cat-row').querySelector('.pill');
+    if (pill) pill.outerHTML = statusPill(b); // đổi trạng thái ngay khi gõ hạn mức
+  });
+  $('budgetTotal').textContent = vnd(inputs.reduce((s, el) => s + digits(el.value), 0));
+  $('budgetStatus').innerHTML = statusPill(1) + ' ' + approved + ' danh mục &nbsp; ' + statusPill(0) + ' ' + (inputs.length - approved) +
+    ' danh mục · Nhập hạn mức > 0 để duyệt.';
 }
 async function saveBudgetForm() {
   const list = Array.from($('budgetList').querySelectorAll('input')).map(el => ({ name: el.dataset.name, budget: digits(el.value) }));
