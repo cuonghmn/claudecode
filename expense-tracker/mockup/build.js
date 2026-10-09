@@ -19,7 +19,7 @@ const style = between(index, '<style>', '</style>');
 const body = between(index, '<body>', '</body>');
 
 const API = ['getInitData', 'getTransactions', 'getRecent', 'getDashboard', 'addTransactions',
-  'updateTransaction', 'deleteTransaction', 'saveBudgets', 'getCategoryList', 'saveCategory', 'deleteCategory', 'parseInput', 'monthlyReview'];
+  'updateTransaction', 'deleteTransaction', 'deleteTransactions', 'saveBudgets', 'getCategoryList', 'saveCategory', 'deleteCategory', 'parseInput', 'monthlyReview'];
 
 const mockStyle = `
   .mock-bar { max-width: 720px; margin: 0 auto; padding: 10px 16px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -116,7 +116,7 @@ window.google = { script: { get run() {
     return (...a) => setTimeout(() => {
       try { ok(JSON.parse(JSON.stringify(Backend[k].apply(null, JSON.parse(JSON.stringify(a)))))); }
       catch (e) { err(e); }
-    }, 120);
+    }, 500); // giả lập độ trễ gần với Apps Script thật
   } });
   return px;
 } } };

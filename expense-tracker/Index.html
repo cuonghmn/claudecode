@@ -7,7 +7,7 @@
 <style>
   /* Layout: app 1 cột cho điện thoại, thanh tab cố định đáy; thẻ trắng trên nền xám ngả xanh ngọc. */
   :root {
-    --bg: #f3f6f6; --card: #ffffff; --text: #15211f; --muted: #66787a; --line: #e0e8e8;
+    --bg: #f3f6f6; --card: #ffffff; --text: #15211f; --muted: #566769; --line: #e0e8e8;
     --brand: #0f766e; --brand-soft: #e3f3f0; --on-brand: #ffffff;
     --ok: #16a34a; --warn: #d97706; --bad: #dc2626;
     --radius: 14px; --shadow: 0 1px 3px rgba(16, 40, 38, .08);
@@ -48,12 +48,24 @@
     background: var(--brand-soft); color: var(--brand); font-weight: 600; }
   button.primary { background: var(--brand); color: var(--on-brand); }
   button:focus-visible, .chip:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
-  button.ghost { background: transparent; color: var(--muted); padding: 6px 8px; }
+  button { min-height: 44px; }  /* vùng chạm tối thiểu cho ngón tay */
+  button.ghost { background: transparent; color: var(--muted); padding: 6px 10px; }
   button.danger { background: transparent; color: var(--bad); }
   button:disabled { opacity: .5; cursor: default; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-  .chip { font-size: 12px; padding: 5px 10px; border-radius: 999px; background: var(--bg);
-    border: 1px solid var(--line); color: var(--muted); cursor: pointer; font-weight: 500; }
+  .chip { font: inherit; font-size: 13px; min-height: 44px; padding: 6px 12px; border-radius: 999px; background: var(--bg);
+    border: 1px solid var(--line); color: var(--text); cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
+  .chip b { color: var(--muted); font-weight: 600; }
+  .chips-label { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .title-row { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px; }
+  .title-row h1 { margin: 0; flex: 1; }
+  .engine { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+  .month-btn { background: transparent; color: var(--text); font-size: 17px; font-weight: 700; padding: 6px 10px; }
+  .month-btn::after { content: " ▾"; font-size: 12px; color: var(--muted); }
+  .mp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .mp-grid button { background: var(--bg); color: var(--text); font-weight: 500; }
+  .mp-grid button.on { background: var(--brand); color: var(--on-brand); }
+  .mp-grid button:disabled { opacity: .35; }
 
   .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
   @media (min-width: 620px) { .kpis { grid-template-columns: repeat(4, 1fr); } }
@@ -76,7 +88,7 @@
     margin: 14px 0 2px; }
   .day-h span:first-child { text-transform: uppercase; letter-spacing: .03em; }
   .range { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 8px; }
-  .range button { padding: 7px 4px; font-size: 13px; font-weight: 500; white-space: nowrap; background: var(--bg);
+  .range button { min-height: 44px; padding: 7px 4px; font-size: 13px; font-weight: 500; white-space: nowrap; background: var(--bg);
     color: var(--muted); border: 1px solid var(--line); border-radius: 999px; }
   .range.two { grid-template-columns: 1fr 1fr; margin-top: 0; }
   .range button.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); font-weight: 600; }
@@ -107,14 +119,17 @@
   .pill.off { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
   .bar > i.off { background: var(--muted); opacity: .45; }
   .icon-pick { display: flex; gap: 4px; flex-wrap: wrap; }
-  .icon-pick button { padding: 4px 6px; font-size: 18px; background: transparent; }
+  .icon-pick button { min-height: 40px; min-width: 40px; padding: 4px 6px; font-size: 18px; background: transparent; }
   .icon-pick button:hover { background: var(--bg); }
   .notice { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-top: 10px; font-size: 14px; }
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
   .modal .sheet { background: var(--card); width: 100%; max-width: 520px; border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); max-height: 92vh; overflow: auto; }
   @media (min-width: 620px) { .modal { align-items: center; } .modal .sheet { border-radius: 18px; } }
   .toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); background: var(--text); color: var(--bg);
-    padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px); }
+    padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: calc(100% - 32px);
+    display: flex; align-items: center; gap: 12px; }
+  .toast button { min-height: 36px; padding: 6px 10px; background: transparent; color: var(--brand-soft); font-weight: 700; text-decoration: underline; }
+  .cat-row.click { cursor: pointer; }
   .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent;
     border-radius: 50%; animation: s .7s linear infinite; vertical-align: -2px; }
   @keyframes s { to { transform: rotate(360deg); } }
@@ -125,12 +140,13 @@
 <main>
   <!-- ============ TAB: GHI NHANH ============ -->
   <section id="tab-add">
-    <h1>Ghi chi tiêu</h1>
+    <div class="title-row"><h1>Ghi chi tiêu</h1><span class="engine" id="engine"></span></div>
     <div class="card">
-      <textarea id="quick" placeholder="Gõ tự nhiên, ví dụ:&#10;trưa phở 55k, grab 32k&#10;hôm qua siêu thị 650k thẻ"></textarea>
+      <textarea id="quick" aria-label="Ghi chi tiêu bằng câu tự nhiên" placeholder="Gõ tự nhiên, ví dụ:&#10;trưa phở 55k, grab 32k&#10;hôm qua siêu thị 650k thẻ"></textarea>
+      <div class="chips-label" id="quickLabel"></div>
       <div class="chips" id="examples"></div>
       <div class="row" style="margin-top:10px">
-        <span class="muted grow" id="engine"></span>
+        <span class="grow"></span>
         <button class="ghost" onclick="openManual()">+ Nhập tay</button>
         <button class="primary" id="btnParse" onclick="doParse()">Phân tích</button>
       </div>
@@ -144,7 +160,7 @@
       </div>
     </div>
     <div class="card">
-      <div class="row"><h2 class="grow" style="margin:0">Gần đây</h2><span class="muted">Hôm nay: <b id="todayTotal" class="num">—</b></span></div>
+      <h2 style="margin:0">Gần đây</h2>
       <div class="range" id="recentRange">
         <button data-r="3d" class="on" onclick="setRange('3d')">3 ngày</button>
         <button data-r="5d" onclick="setRange('5d')">5 ngày</button>
@@ -160,7 +176,7 @@
   <section id="tab-dash" class="hidden">
     <div class="month-nav">
       <button class="ghost" onclick="shiftMonth(-1)">‹ Trước</button>
-      <strong id="dashMonth"></strong>
+      <button class="month-btn" id="dashMonth" onclick="pickMonth(S.dashMonth, ym => { S.dashMonth = ym; loadDash(); })"></button>
       <button class="ghost" onclick="shiftMonth(1)">Sau ›</button>
     </div>
     <div id="dash"></div>
@@ -176,7 +192,8 @@
       </div>
       <div class="row" id="hMonthBox">
         <button class="ghost" onclick="shiftHistMonth(-1)" aria-label="Tháng trước">‹ Trước</button>
-        <input type="month" id="hMonth" class="grow" onchange="loadHistory()">
+        <input type="hidden" id="hMonth">
+        <button class="month-btn grow" id="hMonthLabel" onclick="pickMonth($('hMonth').value, ym => { $('hMonth').value = ym; loadHistory(); })"></button>
         <button class="ghost" onclick="shiftHistMonth(1)" aria-label="Tháng sau">Sau ›</button>
       </div>
       <div class="grid2 hidden" id="hRangeBox">
@@ -196,14 +213,14 @@
     <h1>Ngân sách &amp; danh mục</h1>
     <div class="card">
       <div class="row" style="align-items:flex-start">
-        <p class="muted grow" style="margin:0">Đặt hạn mức tháng cho từng danh mục. Bấm ✏️ để đổi tên, icon, từ khóa nhận diện hoặc xóa.</p>
+        <p class="muted grow" style="margin:0">Đặt hạn mức tháng cho từng danh mục. Bấm vào tên danh mục để đổi tên, icon, từ khóa nhận diện hoặc xóa.</p>
         <button onclick="openCategory()">+ Thêm danh mục</button>
       </div>
       <div class="muted" id="budgetStatus" style="margin-top:8px"></div>
       <div id="budgetList"></div>
       <div class="row" style="margin-top:12px">
-        <span class="grow muted">Tổng: <b id="budgetTotal" class="num"></b></span>
-        <button class="primary" id="btnBudget" onclick="saveBudgetForm()">Lưu ngân sách</button>
+        <span class="grow muted">Tổng ngân sách: <b id="budgetTotal" class="num"></b></span>
+        <span class="muted">Tự lưu khi nhập xong</span>
       </div>
     </div>
     <div class="card"><a id="sheetLink" target="_blank" style="color:var(--brand)">Mở Google Sheet dữ liệu ↗</a></div>
@@ -260,10 +277,17 @@ const dLabel = ymd => {
   if ((td - d) / 864e5 === 1) return 'Hôm qua';
   return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()] + ', ' + ymd.slice(8) + '/' + ymd.slice(5, 7);
 };
-function toast(msg, ms) {
+/** action (tùy chọn): { label, fn } — ví dụ nút "Hoàn tác". */
+function toast(msg, ms, action) {
   document.querySelectorAll('.toast').forEach(t => t.remove());
-  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
-  document.body.appendChild(el); setTimeout(() => el.remove(), ms || 2600);
+  const el = document.createElement('div'); el.className = 'toast';
+  const span = document.createElement('span'); span.textContent = msg; el.appendChild(span);
+  if (action) {
+    const b = document.createElement('button'); b.textContent = action.label;
+    b.onclick = () => { el.remove(); action.fn(); };
+    el.appendChild(b);
+  }
+  document.body.appendChild(el); setTimeout(() => el.remove(), ms || (action ? 5000 : 2600));
 }
 function busy(btn, on, label) {
   if (on) { btn.dataset.l = btn.innerHTML; btn.innerHTML = '<span class="spin"></span> ' + (label || ''); btn.disabled = true; }
@@ -283,6 +307,34 @@ function methodOptions(sel) {
 }
 function fmtInput(el) { const n = digits(el.value); el.value = n ? n.toLocaleString('vi-VN') : ''; }
 
+/* ---------------- Bộ nhớ tạm: mở tab ngay, cập nhật ở nền ---------------- */
+const CACHE = {};
+/**
+ * Gọi server qua bộ nhớ tạm. Có sẵn dữ liệu thì render ngay (không chờ), sau đó tải bản mới
+ * và chỉ render lại nếu dữ liệu thay đổi. Trả về false nếu kết quả đã cũ (người dùng đổi bộ lọc).
+ */
+async function cachedCall(key, fn, args, render, isCurrent) {
+  const hit = CACHE[key];
+  if (hit) render(hit.data);
+  const data = await api.apply(null, [fn].concat(args));
+  const str = JSON.stringify(data);
+  if (isCurrent && !isCurrent()) return;
+  if (hit && hit.str === str) return;
+  CACHE[key] = { data: data, str: str };
+  render(data);
+}
+/** Sau khi ghi/sửa/xóa: bỏ bộ nhớ tạm để mọi màn hình tải lại số liệu mới. */
+function invalidate() { Object.keys(CACHE).forEach(k => delete CACHE[k]); prefetch(); }
+/** Tải trước các màn hay mở để chuyển tab không phải chờ. */
+function prefetch() {
+  clearTimeout(prefetch.t);
+  prefetch.t = setTimeout(() => {
+    const ym = S.init.today.slice(0, 7);
+    if (!CACHE['dash|' + ym]) api('getDashboard', ym).then(d => { CACHE['dash|' + ym] = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
+    if (!CACHE.cats) api('getCategoryList').then(d => { CACHE.cats = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
+  }, 1500); // chờ màn hiện tại tải xong rồi mới tải trước ở nền
+}
+
 /* ---------------- Điều hướng ---------------- */
 function go(tab) {
   ['add', 'dash', 'hist', 'budget'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== tab));
@@ -295,12 +347,30 @@ function go(tab) {
 }
 
 /* ---------------- Ghi nhanh ---------------- */
-const EXAMPLES = ['trưa phở 55k, cafe 45k', 'grab 32k', 'hôm qua siêu thị 650k thẻ', 'tiền điện 780k ck'];
-function renderExamples() {
-  $('examples').innerHTML = EXAMPLES.map(e => '<span class="chip">' + esc(e) + '</span>').join('');
-  $('examples').querySelectorAll('.chip').forEach((c, i) => c.onclick = () => {
-    const q = $('quick'); q.value = (q.value.trim() ? q.value.trim() + ', ' : '') + EXAMPLES[i]; q.focus();
-  });
+const EXAMPLES = ['trưa phở 55k, cafe 45k', 'grab 32k', 'hôm qua siêu thị 650k thẻ'];
+/**
+ * Chưa có lịch sử: hiện câu ví dụ (bấm để điền vào ô).
+ * Đã có khoản hay ghi: hiện "Ghi lại nhanh" — bấm là thêm thẳng vào danh sách chờ lưu với ngày hôm nay.
+ */
+function renderQuick(quick) {
+  if (quick && quick.length) {
+    S.quick = quick;
+    $('quickLabel').textContent = 'Ghi lại nhanh';
+    $('examples').innerHTML = quick.map((q, i) =>
+      `<button type="button" class="chip" onclick="addQuick(${i})">${icon(q.category)} ${esc(q.description)} <b class="num">${short(q.amount)}</b></button>`).join('');
+  } else {
+    $('quickLabel').textContent = 'Ví dụ';
+    $('examples').innerHTML = EXAMPLES.map((e, i) => `<button type="button" class="chip" onclick="addExample(${i})">${esc(e)}</button>`).join('');
+  }
+}
+function addExample(i) {
+  const q = $('quick'); q.value = (q.value.trim() ? q.value.trim() + ', ' : '') + EXAMPLES[i]; q.focus();
+}
+function addQuick(i) {
+  const q = S.quick[i];
+  S.preview.push({ date: S.init.today, amount: q.amount, category: q.category, description: q.description, method: q.method });
+  renderPreview();
+  $('btnSave').focus();
 }
 
 async function doParse() {
@@ -343,9 +413,9 @@ async function savePreview() {
   if (S.preview.some(x => !x.amount)) { toast('Có khoản chưa có số tiền.'); return; }
   const btn = $('btnSave'); busy(btn, true, 'Đang lưu');
   try {
-    const n = await api('addTransactions', S.preview);
-    toast('Đã lưu ' + n + ' khoản ✓');
-    $('quick').value = ''; clearPreview(); loadRecent();
+    const ids = await api('addTransactions', S.preview);
+    $('quick').value = ''; clearPreview(); invalidate(); loadRecent();
+    toast('Đã lưu ' + ids.length + ' khoản ✓', 0, { label: 'Hoàn tác', fn: () => undoAdd(ids) });
   } catch (e) { fail(e); } finally { busy(btn, false); updPreviewTotal(); }
 }
 
@@ -358,16 +428,20 @@ function setRange(r) {
 }
 
 async function loadRecent() {
+  const range = recentRange;
+  if (!CACHE['recent|' + range]) $('recent').innerHTML = '<div class="empty"><span class="spin"></span></div>';
   try {
-    const r = await api('getRecent', recentRange);
+    await cachedCall('recent|' + range, 'getRecent', [range], renderRecent, () => range === recentRange);
+  } catch (e) { fail(e); }
+}
+function renderRecent(r) {
     if (r.range !== recentRange) return; // bỏ kết quả cũ nếu người dùng đã chọn khoảng khác
-    $('todayTotal').textContent = vnd(r.todayTotal);
+    renderQuick(r.quick);
     const from = r.start.slice(8) + '/' + r.start.slice(5, 7);
     $('recentSummary').innerHTML = RANGE_LABEL[r.range] + ' (từ ' + from + '): ' + r.items.length + ' khoản · <b class="num">' + vnd(r.total) + '</b>';
     $('recent').innerHTML = r.items.length ? groupByDay(r.items)
       : '<div class="empty">Không có khoản nào trong ' + RANGE_LABEL[r.range].toLowerCase() + '. Ghi khoản đầu tiên ở trên nhé.</div>';
     bindTx($('recent'), r.items);
-  } catch (e) { fail(e); }
 }
 
 /** Danh sách đã sắp xếp mới → cũ, gom theo ngày, mỗi ngày có tổng tiền. */
@@ -416,7 +490,10 @@ function openManual() {
 async function saveManual() {
   const t = readForm(); if (!t.amount) { toast('Nhập số tiền'); return; }
   const btn = $('btnM'); busy(btn, true);
-  try { await api('addTransactions', [t]); closeModal(); toast('Đã lưu ✓'); refreshCurrent(); }
+  try {
+    const ids = await api('addTransactions', [t]); closeModal(); invalidate(); refreshCurrent();
+    toast('Đã lưu ✓', 0, { label: 'Hoàn tác', fn: () => undoAdd(ids) });
+  }
   catch (e) { fail(e); busy(btn, false); }
 }
 
@@ -429,14 +506,22 @@ function openEdit(t) {
 async function saveEdit() {
   const t = Object.assign(readForm(), { id: S.editing.id }); if (!t.amount) { toast('Nhập số tiền'); return; }
   const btn = $('btnE'); busy(btn, true);
-  try { await api('updateTransaction', t); closeModal(); toast('Đã cập nhật ✓'); refreshCurrent(); }
+  try { await api('updateTransaction', t); closeModal(); invalidate(); toast('Đã cập nhật ✓'); refreshCurrent(); }
   catch (e) { fail(e); busy(btn, false); }
 }
 async function delTx() {
   const btn = $('btnDel');
   if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = 'Bấm lần nữa để xóa'; return; }
-  try { await api('deleteTransaction', S.editing.id); closeModal(); toast('Đã xóa'); refreshCurrent(); }
-  catch (e) { fail(e); }
+  try {
+    const tx = await api('deleteTransaction', S.editing.id); closeModal(); invalidate(); refreshCurrent();
+    toast('Đã xóa "' + (tx && (tx.description || tx.category) || 'khoản chi') + '"', 0, tx && { label: 'Hoàn tác', fn: () => undoDelete(tx) });
+  } catch (e) { fail(e); }
+}
+async function undoAdd(ids) {
+  try { await api('deleteTransactions', ids); invalidate(); refreshCurrent(); toast('Đã hoàn tác'); } catch (e) { fail(e); }
+}
+async function undoDelete(tx) {
+  try { await api('addTransactions', [tx]); invalidate(); refreshCurrent(); toast('Đã khôi phục ✓'); } catch (e) { fail(e); }
 }
 function refreshCurrent() {
   const b = document.querySelector('nav button.active'); go(b ? b.dataset.tab : 'add');
@@ -451,9 +536,10 @@ function shiftMonth(n) {
 }
 
 async function loadDash() {
-  $('dashMonth').textContent = ymLabel(S.dashMonth);
-  $('dash').innerHTML = '<div class="empty"><span class="spin"></span></div>';
-  try { renderDash(await api('getDashboard', S.dashMonth)); } catch (e) { fail(e); }
+  const ym = S.dashMonth;
+  $('dashMonth').textContent = ymLabel(ym);
+  if (!CACHE['dash|' + ym]) $('dash').innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  try { await cachedCall('dash|' + ym, 'getDashboard', [ym], renderDash, () => ym === S.dashMonth); } catch (e) { fail(e); }
 }
 
 function renderDash(d) {
@@ -491,7 +577,9 @@ function renderDash(d) {
         <div class="bar"><i class="${c.budget ? cls : 'off'}" style="width:${Math.min(100, p)}%"></i></div></div>`;
   }).join('') || '<div class="empty">Chưa có dữ liệu</div>') + '</div>';
 
-  html += '<div class="card"><h2>Chi theo ngày</h2>' + dailyChart(d.daily) + '</div>';
+  const bi = d.bigItems || { count: 0 };
+  html += '<div class="card"><h2>Chi thường ngày theo ngày</h2>' + dailyChart(d.dailyRoutine || d.daily) +
+    (bi.count ? `<div class="muted" style="margin-top:6px">Không tính ${bi.count} khoản lớn từ ${short(bi.threshold)} trở lên (tổng ${vnd(bi.total)}), xem ở "5 khoản lớn nhất".</div>` : '') + '</div>';
 
   html += '<div class="card"><h2>5 khoản lớn nhất</h2>' + (d.top.length ? d.top.map(txRow).join('') : '<div class="empty">—</div>') + '</div>';
 
@@ -560,11 +648,33 @@ function shiftHistMonth(n) {
   $('hMonth').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   loadHistory();
 }
+/** Bộ chọn tháng: lưới 12 tháng + chuyển năm. Không cho chọn tháng tương lai. */
+function pickMonth(cur, onPick) {
+  cur = cur || S.init.today.slice(0, 7);
+  let year = +cur.slice(0, 4);
+  const maxYm = S.init.today.slice(0, 7);
+  const draw = () => {
+    const ym = m => year + '-' + String(m).padStart(2, '0');
+    $('mpYear').textContent = 'Năm ' + year;
+    $('mpNext').disabled = year >= +maxYm.slice(0, 4);
+    $('mpGrid').innerHTML = Array.from({ length: 12 }, (_, i) => i + 1).map(m =>
+      `<button type="button" class="${ym(m) === cur ? 'on' : ''}" ${ym(m) > maxYm ? 'disabled' : ''} data-ym="${ym(m)}">Th ${m}</button>`).join('');
+    $('mpGrid').querySelectorAll('button').forEach(b => b.onclick = () => { closeModal(); onPick(b.dataset.ym); });
+  };
+  openModal(`<div class="row"><h2 class="grow" style="margin:0">Chọn tháng</h2><button class="ghost" onclick="closeModal()">Đóng</button></div>
+    <div class="row" style="justify-content:space-between;margin-top:6px">
+      <button class="ghost" id="mpPrev" aria-label="Năm trước">‹</button><strong id="mpYear"></strong>
+      <button class="ghost" id="mpNext" aria-label="Năm sau">›</button></div>
+    <div class="mp-grid" id="mpGrid"></div>`);
+  $('mpPrev').onclick = () => { year--; draw(); };
+  $('mpNext').onclick = () => { year++; draw(); };
+  draw();
+}
 const dmy = ymd => ymd.slice(8) + '/' + ymd.slice(5, 7) + '/' + ymd.slice(0, 4);
 
 async function loadHistory() {
   const req = ++histReq;
-  $('hist').innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  $('hMonthLabel').textContent = ymLabel($('hMonth').value || S.init.today.slice(0, 7));
   try {
     let from = '', to = '', period;
     if (histMode === 'range') {
@@ -574,14 +684,18 @@ async function loadHistory() {
     } else {
       period = ymLabel($('hMonth').value || S.init.today.slice(0, 7));
     }
-    const list = await api('getTransactions', histMode === 'month' ? $('hMonth').value : '', $('hCat').value, $('hQ').value, from, to);
-    if (req !== histReq) return; // đã có lần lọc mới hơn
+    const args = [histMode === 'month' ? $('hMonth').value : '', $('hCat').value, $('hQ').value, from, to];
+    const key = 'hist|' + JSON.stringify(args);
+    if (!CACHE[key]) $('hist').innerHTML = '<div class="empty"><span class="spin"></span></div>';
+    await cachedCall(key, 'getTransactions', args, list => renderHistory(list, period), () => req === histReq);
+  } catch (e) { fail(e); }
+}
+function renderHistory(list, period) {
     const total = list.reduce((s, t) => s + t.amount, 0);
     $('hSummary').innerHTML = esc(period) + ': ' + list.length + ' khoản · <b class="num">' + vnd(total) + '</b>';
     if (!list.length) { $('hist').innerHTML = '<div class="empty">Không có giao dịch phù hợp</div>'; return; }
     $('hist').innerHTML = groupByDay(list);
     bindTx($('hist'), list);
-  } catch (e) { fail(e); }
 }
 
 /* ---------------- Thêm nhanh danh mục khi đang ghi ---------------- */
@@ -608,7 +722,7 @@ async function saveQuickCat() {
   const btn = $('btnQa'); busy(btn, true);
   try {
     const r = await api('saveCategory', { name: name, icon: $('qaIcon').value, budget: 0, keywords: '' });
-    await refreshInit();
+    invalidate(); await refreshInit();
     // Cập nhật mọi ô chọn danh mục đang mở, giữ nguyên lựa chọn cũ; ô vừa bấm chọn danh mục mới
     document.querySelectorAll('select.cat-sel').forEach(sel => {
       const v = sel === qaTarget ? r.name : (sel.dataset.prev || sel.value);
@@ -624,16 +738,31 @@ async function saveQuickCat() {
 async function renderBudgets() {
   $('sheetLink').href = S.init.sheetUrl || '#';
   $('sheetLink').parentNode.classList.toggle('hidden', !S.init.sheetUrl);
-  $('budgetList').innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  if (!CACHE.cats) $('budgetList').innerHTML = '<div class="empty"><span class="spin"></span></div>';
   try {
-    S.catList = await api('getCategoryList');
-    $('budgetList').innerHTML = S.catList.map((c, i) => `
-      <div class="cat-row row"><span>${esc(c.icon)}</span>
-        <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${statusPill(c.budget)}</small></span>
-        <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" aria-label="Ngân sách ${esc(c.name)}"
-          value="${c.budget.toLocaleString('vi-VN')}" onblur="fmtInput(this)" oninput="updBudgetTotal()">
-        <button class="ghost" title="Sửa danh mục" aria-label="Sửa ${esc(c.name)}" onclick="openCategory(${i})">✏️</button></div>`).join('');
-    updBudgetTotal();
+    await cachedCall('cats', 'getCategoryList', [], list => {
+      if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#budgetList')) return; // đang gõ thì không vẽ lại
+      S.catList = list;
+      $('budgetList').innerHTML = S.catList.map((c, i) => `
+        <div class="cat-row row click" onclick="if(event.target.tagName!=='INPUT')openCategory(${i})">
+          <span>${esc(c.icon)}</span>
+          <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${statusPill(c.budget)}</small></span>
+          <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" aria-label="Ngân sách ${esc(c.name)}"
+            value="${c.budget.toLocaleString('vi-VN')}" data-saved="${c.budget}" onblur="fmtInput(this)" oninput="updBudgetTotal()" onchange="saveOneBudget(this)">
+          <button class="ghost" style="min-width:44px" title="Sửa danh mục" aria-label="Sửa ${esc(c.name)}">✏️</button></div>`).join('');
+      updBudgetTotal();
+    });
+  } catch (e) { fail(e); }
+}
+/** Tự lưu hạn mức của 1 danh mục khi rời ô nhập. */
+async function saveOneBudget(el) {
+  const name = el.dataset.name, budget = digits(el.value);
+  if (String(budget) === el.dataset.saved) return;
+  try {
+    await api('saveBudgets', [{ name: name, budget: budget }]);
+    el.dataset.saved = String(budget);
+    invalidate(); await refreshInit();
+    toast('Đã lưu hạn mức ' + name + ': ' + vnd(budget) + ' ✓');
   } catch (e) { fail(e); }
 }
 /** Trạng thái tự động theo ngân sách: > 0 là đã duyệt, = 0 là ngoài ngân sách. */
@@ -651,11 +780,6 @@ function updBudgetTotal() {
   $('budgetTotal').textContent = vnd(inputs.reduce((s, el) => s + digits(el.value), 0));
   $('budgetStatus').innerHTML = statusPill(1) + ' ' + approved + ' danh mục &nbsp; ' + statusPill(0) + ' ' + (inputs.length - approved) +
     ' danh mục · Nhập hạn mức > 0 để duyệt.';
-}
-async function saveBudgetForm() {
-  const list = Array.from($('budgetList').querySelectorAll('input')).map(el => ({ name: el.dataset.name, budget: digits(el.value) }));
-  const btn = $('btnBudget'); busy(btn, true);
-  try { await api('saveBudgets', list); await refreshInit(); toast('Đã lưu ngân sách ✓'); } catch (e) { fail(e); } finally { busy(btn, false); }
 }
 
 /** Nạp lại danh mục sau khi thêm/sửa/xóa để màn Ghi, Lịch sử, Tổng quan dùng bản mới. */
@@ -704,7 +828,7 @@ async function saveCategoryForm() {
     const r = await api('saveCategory', data);
     closeModal();
     toast(r.created ? 'Đã thêm "' + r.name + '" ✓' : r.renamed ? 'Đã lưu, chuyển ' + r.renamed + ' khoản sang tên mới ✓' : 'Đã lưu ✓');
-    await refreshInit(); renderBudgets();
+    invalidate(); await refreshInit(); renderBudgets();
   } catch (e) { fail(e); busy(btn, false); }
 }
 
@@ -726,7 +850,7 @@ async function confirmDeleteCategory() {
     const r = await api('deleteCategory', c.name, moveTo);
     closeModal();
     toast('Đã xóa "' + r.deleted + '"' + (r.moved ? ', chuyển ' + r.moved + ' khoản sang "' + moveTo + '"' : '') + ' ✓');
-    await refreshInit(); renderBudgets();
+    invalidate(); await refreshInit(); renderBudgets();
   } catch (e) { fail(e); busy(btn, false); }
 }
 
@@ -738,8 +862,9 @@ async function confirmDeleteCategory() {
     S.dashMonth = S.init.today.slice(0, 7);
     $('hMonth').value = S.dashMonth;
     $('hCat').innerHTML = '<option value="">Tất cả danh mục</option>' + catOptions('');
-    $('engine').textContent = S.init.aiName ? '🤖 ' + S.init.aiName + ' đang bật' : '⚙️ Chế độ offline';
-    renderExamples(); loadRecent();
+    $('engine').textContent = S.init.aiName ? '🤖 ' + S.init.aiName : '⚙️ Offline';
+    $('engine').title = S.init.aiName ? 'Đang dùng ' + S.init.aiName + ' để hiểu câu nhập' : 'Chưa bật AI, dùng bộ tách offline';
+    renderQuick(null); loadRecent(); prefetch();
     $('quick').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doParse(); });
   } catch (e) {
     document.querySelector('main').innerHTML = '<div class="card"><h2>Chưa khởi tạo</h2><p>' + esc(e.message || e) +

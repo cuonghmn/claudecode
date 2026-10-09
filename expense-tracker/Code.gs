@@ -225,8 +225,26 @@ function getRecent(range) {
     start: start,
     todayTotal: all.filter(t => t.date === today).reduce((s, t) => s + t.amount, 0),
     total: items.reduce((s, t) => s + t.amount, 0),
-    items: items
+    items: items,
+    quick: quickPicks_(all, today)
   };
+}
+
+/**
+ * "Ghi lại nhanh": tối đa 4 khoản hay ghi nhất trong 60 ngày gần đây (cùng mô tả + danh mục),
+ * kèm số tiền của lần ghi gần nhất.
+ */
+function quickPicks_(all, today) {
+  const since = addDays_(today, -60);
+  const groups = {};
+  sortTx_(all.filter(t => t.date >= since && t.date <= today && t.description)).forEach(t => {
+    const k = t.description.trim().toLowerCase() + '|' + t.category;
+    if (!groups[k]) groups[k] = { description: t.description.trim(), category: t.category, method: t.method, amount: t.amount, n: 0 };
+    groups[k].n++;
+  });
+  return Object.keys(groups).map(k => groups[k]).filter(g => g.n >= 2)
+    .sort((a, b) => b.n - a.n).slice(0, 4)
+    .map(g => ({ description: g.description, category: g.category, method: g.method, amount: g.amount }));
 }
 
 /** Chi ở danh mục chưa có ngân sách (ngân sách = 0) trong tháng. */
@@ -263,9 +281,14 @@ function getDashboard(month) {
   const routine = cur.filter(t => t.amount < BIG_ITEM_THRESHOLD).reduce((s, t) => s + t.amount, 0);
   const avgRoutine = elapsed ? routine / elapsed : 0;
 
-  const daily = [];
-  for (let d = 1; d <= days; d++) daily.push(0);
-  cur.forEach(t => { daily[Number(t.date.slice(8, 10)) - 1] += t.amount; });
+  const daily = [], dailyRoutine = [];
+  for (let d = 1; d <= days; d++) { daily.push(0); dailyRoutine.push(0); }
+  cur.forEach(t => {
+    const i = Number(t.date.slice(8, 10)) - 1;
+    daily[i] += t.amount;
+    if (t.amount < BIG_ITEM_THRESHOLD) dailyRoutine[i] += t.amount;
+  });
+  const big = cur.filter(t => t.amount >= BIG_ITEM_THRESHOLD);
 
   return {
     month: month,
@@ -282,6 +305,8 @@ function getDashboard(month) {
       .filter(c => c.amount || c.budget)
       .sort((a, b) => b.amount - a.amount),
     daily: daily,
+    dailyRoutine: dailyRoutine,           // chỉ chi thường ngày, để biểu đồ không bị khoản lớn lấn át
+    bigItems: { count: big.length, total: big.reduce((s, t) => s + t.amount, 0), threshold: BIG_ITEM_THRESHOLD },
     top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
     offBudget: offBudget_(byCatMap)
   };
@@ -303,8 +328,9 @@ function normalizeItem_(it, catNames, today) {
   };
 }
 
+/** Lưu các khoản chi, trả về danh sách ID vừa tạo (để giao diện có thể Hoàn tác). */
 function addTransactions(items) {
-  if (!items || !items.length) return 0;
+  if (!items || !items.length) return [];
   const catNames = getCategories_().map(c => c.name);
   const today = todayStr_();
   const now = new Date();
@@ -315,7 +341,7 @@ function addTransactions(items) {
   return withLock_(() => {
     const sh = sheet_(SHEET_TX);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, TX_HEADERS.length).setValues(rows);
-    return rows.length;
+    return rows.map(r => r[0]);
   });
 }
 
@@ -336,11 +362,30 @@ function updateTransaction(tx) {
   });
 }
 
+/** Xóa 1 khoản, trả về chính khoản đó (để giao diện có thể Hoàn tác). */
 function deleteTransaction(id) {
+  const tx = readTx_().filter(t => t.id === String(id))[0];
   return withLock_(() => {
     const sh = sheet_(SHEET_TX);
     sh.deleteRow(findRow_(sh, id));
-    return true;
+    return tx || null;
+  });
+}
+
+/** Xóa nhiều khoản theo ID (dùng khi Hoàn tác thao tác vừa lưu). */
+function deleteTransactions(ids) {
+  const set = {};
+  (ids || []).forEach(id => { set[String(id)] = true; });
+  return withLock_(() => {
+    const sh = sheet_(SHEET_TX);
+    const n = sh.getLastRow() - 1;
+    if (n < 1) return 0;
+    const col = sh.getRange(2, 1, n, 1).getValues();
+    let removed = 0;
+    for (let i = n - 1; i >= 0; i--) {
+      if (set[String(col[i][0])]) { sh.deleteRow(i + 2); removed++; }
+    }
+    return removed;
   });
 }
 
