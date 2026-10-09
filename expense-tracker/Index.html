@@ -406,7 +406,7 @@ function renderDash(d) {
   html += '<div class="card"><h2>5 khoản lớn nhất</h2>' + (d.top.length ? d.top.map(txRow).join('') : '<div class="empty">—</div>') + '</div>';
 
   html += `<div class="card"><div class="row"><h2 class="grow" style="margin:0">🤖 Nhận xét tháng</h2>
-    <button id="btnReview" onclick="doReview()">${S.init.hasClaude ? 'Hỏi Claude' : 'Tạo nhận xét'}</button></div>
+    <button id="btnReview" onclick="doReview()">${S.init.aiName ? 'Hỏi ' + esc(S.init.aiName) : 'Tạo nhận xét'}</button></div>
     <div id="review" class="review" style="margin-top:10px"></div></div>`;
 
   $('dash').innerHTML = html;
@@ -495,7 +495,7 @@ async function saveBudgetForm() {
     S.dashMonth = S.init.today.slice(0, 7);
     $('hMonth').value = S.dashMonth;
     $('hCat').innerHTML = '<option value="">Tất cả danh mục</option>' + catOptions('');
-    $('engine').textContent = S.init.hasClaude ? '🤖 Claude đang bật' : '⚙️ Chế độ offline';
+    $('engine').textContent = S.init.aiName ? '🤖 ' + S.init.aiName + ' đang bật' : '⚙️ Chế độ offline';
     renderExamples(); loadRecent();
     $('quick').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) doParse(); });
   } catch (e) {

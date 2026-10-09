@@ -1,13 +1,16 @@
 /**
- * Sổ chi tiêu cá nhân — Google Sheets + Apps Script + Claude
+ * Sổ chi tiêu cá nhân — Google Sheets + Apps Script + AI (Gemini free hoặc Claude)
  *
  * Sheet "GiaoDich": mỗi dòng là 1 khoản chi.
  * Sheet "DanhMuc":  danh mục, icon, ngân sách tháng, từ khóa nhận diện (sửa trực tiếp trên Sheet được).
  *
  * Script Properties (Project Settings → Script properties):
- *   ANTHROPIC_API_KEY  (tùy chọn) bật nhập liệu tự nhiên + nhận xét tháng bằng Claude.
- *                      Không có key thì app dùng bộ tách quy tắc (offline) — vẫn chạy bình thường.
+ *   AI_PROVIDER        gemini | claude | off. Bỏ trống: tự chọn theo key đang có (ưu tiên Gemini).
+ *   GEMINI_API_KEY     key miễn phí từ Google AI Studio (aistudio.google.com → Get API key).
+ *   GEMINI_MODEL       (tùy chọn) mặc định gemini-flash-latest.
+ *   ANTHROPIC_API_KEY  key Claude (platform.claude.com) — khi chuyển sang Claude.
  *   CLAUDE_MODEL       (tùy chọn) mặc định claude-opus-5-5.
+ * Không có key nào thì app dùng bộ tách quy tắc (offline) — vẫn chạy bình thường.
  */
 
 const SHEET_TX = 'GiaoDich';
@@ -16,7 +19,8 @@ const TX_HEADERS = ['ID', 'Ngày', 'Số tiền', 'Danh mục', 'Mô tả', 'Ph�
 const CAT_HEADERS = ['Danh mục', 'Icon', 'Ngân sách tháng', 'Từ khóa (cách nhau bởi dấu phẩy)'];
 const METHODS = ['Chuyển khoản', 'Thẻ', 'Tiền mặt', 'Ví điện tử'];
 const DEFAULT_METHOD = 'Chuyển khoản';
-const DEFAULT_MODEL = 'claude-opus-5-5';
+const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
+const DEFAULT_CLAUDE_MODEL = 'claude-opus-5-5';
 // Các model hỗ trợ fallbacks "default" (tự chuyển model khi bị bộ lọc an toàn từ chối nhầm).
 // Khoản >= ngưỡng này coi là khoản lớn/cố định (tiền nhà, tiết kiệm…): không ngoại suy khi dự báo cuối tháng.
 const BIG_ITEM_THRESHOLD = 1000000;
@@ -186,7 +190,7 @@ function getInitData() {
     methods: METHODS,
     defaultMethod: DEFAULT_METHOD,
     today: todayStr_(),
-    hasClaude: !!prop_('ANTHROPIC_API_KEY'),
+    aiName: aiName_(),
     sheetUrl: ss_().getUrl()
   };
 }
@@ -338,11 +342,12 @@ function parseInput(text) {
   if (!text) return { items: [], source: 'none' };
   const cats = getCategories_();
   const today = todayStr_();
-  if (prop_('ANTHROPIC_API_KEY')) {
+  const provider = aiProvider_();
+  if (provider) {
     try {
-      return { items: parseWithClaude_(text, cats, today), source: 'claude' };
+      return { items: parseWithAI_(text, cats, today), source: provider };
     } catch (e) {
-      return { items: parseLocal_(text, cats, today), source: 'local', warning: 'Claude lỗi, đã dùng bộ tách offline: ' + e.message };
+      return { items: parseLocal_(text, cats, today), source: 'local', warning: aiName_() + ' lỗi, đã dùng bộ tách offline: ' + e.message };
     }
   }
   return { items: parseLocal_(text, cats, today), source: 'local' };
@@ -422,12 +427,88 @@ function guessCategory_(text, cats) {
   return best;
 }
 
-/* ============================ Claude API ============================ */
+/* ============================ AI: Gemini (free) hoặc Claude ============================ */
 
-function callClaude_(payload) {
-  const model = prop_('CLAUDE_MODEL') || DEFAULT_MODEL;
+/** Nhà cung cấp AI đang dùng: 'gemini' | 'claude' | '' (offline). */
+function aiProvider_() {
+  const p = String(prop_('AI_PROVIDER') || '').trim().toLowerCase();
+  if (p === 'gemini' && prop_('GEMINI_API_KEY')) return 'gemini';
+  if (p === 'claude' && prop_('ANTHROPIC_API_KEY')) return 'claude';
+  if (p === 'off') return '';
+  if (prop_('GEMINI_API_KEY')) return 'gemini';
+  if (prop_('ANTHROPIC_API_KEY')) return 'claude';
+  return '';
+}
+
+function aiName_() {
+  return { gemini: 'Gemini', claude: 'Claude' }[aiProvider_()] || '';
+}
+
+/**
+ * Gọi AI đang bật. task = { system, user, schema (JSON Schema, tùy chọn), effort: 'low'|'medium' }.
+ * Có schema thì trả về object đã parse, không có thì trả về text.
+ */
+function callAI_(task) {
+  const provider = aiProvider_();
+  if (provider === 'gemini') return callGemini_(task);
+  if (provider === 'claude') return callClaude_(task);
+  throw new Error('Chưa cấu hình AI');
+}
+
+function callGemini_(task) {
+  const model = prop_('GEMINI_MODEL') || DEFAULT_GEMINI_MODEL;
+  const body = {
+    systemInstruction: { parts: [{ text: task.system }] },
+    contents: [{ role: 'user', parts: [{ text: task.user }] }],
+    generationConfig: { temperature: 0.2 }
+  };
+  if (task.schema) {
+    body.generationConfig.responseMimeType = 'application/json';
+    body.generationConfig.responseSchema = toGeminiSchema_(task.schema);
+  }
+  const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+    method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': prop_('GEMINI_API_KEY') },
+    payload: JSON.stringify(body), muteHttpExceptions: true
+  });
+  const code = res.getResponseCode();
+  const json = JSON.parse(res.getContentText());
+  if (code === 429) throw new Error('Gemini hết hạn mức miễn phí, thử lại sau');
+  if (code !== 200) throw new Error('Gemini HTTP ' + code + ': ' + (json.error && json.error.message || res.getContentText().slice(0, 200)));
+  const cand = (json.candidates || [])[0];
+  if (!cand || !cand.content) throw new Error('Gemini không trả kết quả (' + (cand && cand.finishReason || (json.promptFeedback && json.promptFeedback.blockReason) || 'không rõ') + ')');
+  if (cand.finishReason === 'MAX_TOKENS') throw new Error('Phản hồi bị cắt do quá dài');
+  const text = cand.content.parts.filter(p => p.text && !p.thought).map(p => p.text).join('');
+  return task.schema ? JSON.parse(text) : text;
+}
+
+/** Gemini dùng tập con OpenAPI: bỏ additionalProperties, kiểu viết hoa. */
+function toGeminiSchema_(s) {
+  const out = {};
+  Object.keys(s).forEach(k => {
+    if (k === 'additionalProperties') return;
+    if (k === 'type') out.type = String(s.type).toUpperCase();
+    else if (k === 'properties') {
+      out.properties = {};
+      Object.keys(s.properties).forEach(p => { out.properties[p] = toGeminiSchema_(s.properties[p]); });
+    } else if (k === 'items') out.items = toGeminiSchema_(s.items);
+    else out[k] = s[k];
+  });
+  return out;
+}
+
+function callClaude_(task) {
+  const model = prop_('CLAUDE_MODEL') || DEFAULT_CLAUDE_MODEL;
   const headers = { 'x-api-key': prop_('ANTHROPIC_API_KEY'), 'anthropic-version': '2023-06-01' };
-  const body = Object.assign({ model: model }, payload);
+  const body = {
+    model: model, max_tokens: 4000, system: task.system,
+    messages: [{ role: 'user', content: task.user }]
+  };
+  // effort chỉ áp dụng cho các model đời mới (Opus/Sonnet/Fable 5.x); Haiku 4.5 không hỗ trợ.
+  if (!/haiku/.test(model)) body.output_config = { effort: task.effort || 'medium' };
+  if (task.schema) {
+    body.output_config = body.output_config || {};
+    body.output_config.format = { type: 'json_schema', schema: task.schema };
+  }
   if (FALLBACK_MODELS.indexOf(model) >= 0) {
     headers['anthropic-beta'] = 'server-side-fallback-2026-07-01';
     body.fallbacks = 'default';
@@ -438,13 +519,14 @@ function callClaude_(payload) {
   });
   const code = res.getResponseCode();
   const json = JSON.parse(res.getContentText());
-  if (code !== 200) throw new Error('HTTP ' + code + ' — ' + (json.error && json.error.message || res.getContentText().slice(0, 200)));
+  if (code !== 200) throw new Error('Claude HTTP ' + code + ': ' + (json.error && json.error.message || res.getContentText().slice(0, 200)));
   if (json.stop_reason === 'refusal') throw new Error('Claude từ chối xử lý yêu cầu này');
   if (json.stop_reason === 'max_tokens') throw new Error('Phản hồi bị cắt do quá dài');
-  return json.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  const text = json.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  return task.schema ? JSON.parse(text) : text;
 }
 
-function parseWithClaude_(text, cats, today) {
+function parseWithAI_(text, cats, today) {
   const catNames = cats.map(c => c.name);
   const weekday = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][toDate_(today).getDay()];
   const system = [
@@ -478,21 +560,15 @@ function parseWithClaude_(text, cats, today) {
     }
   };
 
-  const out = callClaude_({
-    max_tokens: 4000,
-    system: system,
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: schema } },
-    messages: [{ role: 'user', content: text }]
-  });
-  const items = JSON.parse(out).items || [];
-  return items.map(it => normalizeItem_(it, catNames, today));
+  const out = callAI_({ system: system, user: text, schema: schema, effort: 'low' });
+  return (out.items || []).map(it => normalizeItem_(it, catNames, today));
 }
 
-/** Nhận xét tháng: dùng Claude nếu có key, nếu không thì tạo nhận xét theo quy tắc. */
+/** Nhận xét tháng: dùng AI nếu đã bật, nếu không (hoặc AI lỗi) thì tạo nhận xét theo quy tắc. */
 function monthlyReview(month) {
   const d = getDashboard(month);
   if (!d.count) return '## Chưa có dữ liệu\nTháng ' + month + ' chưa có khoản chi nào.';
-  if (!prop_('ANTHROPIC_API_KEY')) return localReview_(d);
+  if (!aiProvider_()) return localReview_(d);
 
   const summary = {
     thang: month,
@@ -504,17 +580,20 @@ function monthlyReview(month) {
     khoan_lon_nhat: d.top.map(t => ({ ngay: t.date, so_tien: t.amount, danh_muc: t.category, mo_ta: t.description })),
     chi_theo_ngay: d.daily
   };
-  return callClaude_({
-    max_tokens: 4000,
-    output_config: { effort: 'medium' },
-    system: 'Bạn là cố vấn tài chính cá nhân, thực dụng, nói thẳng. Viết tiếng Việt, xưng "bạn". ' +
-      'Dựa hoàn toàn vào số liệu được cung cấp, không bịa thêm. Định dạng tiền kiểu 1.250.000đ. ' +
-      'Trả lời đúng cấu trúc Markdown sau, tổng dưới 250 từ:\n' +
-      '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và so với CÙNG KỲ tháng trước (cung_ky_thang_truoc), dự báo cuối tháng nếu tháng chưa hết)\n' +
-      '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, thay đổi lớn, khoản bất thường)\n' +
-      '## Hành động tháng tới\n(3 gạch đầu dòng, cụ thể và đo được, vd "Giới hạn Ăn uống 3.500.000đ, tối đa 2 lần ăn ngoài/tuần")',
-    messages: [{ role: 'user', content: 'Số liệu chi tiêu:\n' + JSON.stringify(summary) }]
-  });
+  try {
+    return callAI_({
+      effort: 'medium',
+      system: 'Bạn là cố vấn tài chính cá nhân, thực dụng, nói thẳng. Viết tiếng Việt, xưng "bạn". ' +
+        'Dựa hoàn toàn vào số liệu được cung cấp, không bịa thêm. Định dạng tiền kiểu 1.250.000đ. ' +
+        'Trả lời đúng cấu trúc Markdown sau, tổng dưới 250 từ:\n' +
+        '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và so với CÙNG KỲ tháng trước (cung_ky_thang_truoc), dự báo cuối tháng nếu tháng chưa hết)\n' +
+        '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, thay đổi lớn, khoản bất thường)\n' +
+        '## Hành động tháng tới\n(3 gạch đầu dòng, cụ thể và đo được, vd "Giới hạn Ăn uống 3.500.000đ, tối đa 2 lần ăn ngoài/tuần")',
+      user: 'Số liệu chi tiêu:\n' + JSON.stringify(summary)
+    });
+  } catch (e) {
+    return localReview_(d) + '\n- (' + aiName_() + ' lỗi: ' + e.message + '. Đang hiển thị nhận xét offline.)';
+  }
 }
 
 function localReview_(d) {
@@ -532,7 +611,7 @@ function localReview_(d) {
   near.forEach(c => lines.push('- Sắp chạm ngân sách **' + c.name + '** (' + Math.round(c.amount / c.budget * 100) + '%).'));
   if (d.top[0]) lines.push('- Khoản lớn nhất: ' + d.top[0].description + ' — ' + f(d.top[0].amount) + '.');
   lines.push('## Gợi ý');
-  lines.push('- Thêm ANTHROPIC_API_KEY trong Script properties để Claude phân tích sâu và đề xuất hành động.');
+  lines.push('- Bật AI (thêm GEMINI_API_KEY miễn phí trong Script properties) để có phân tích sâu và đề xuất hành động.');
   return lines.join('\n');
 }
 

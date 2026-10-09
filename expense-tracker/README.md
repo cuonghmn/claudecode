@@ -1,6 +1,6 @@
-# 💰 Sổ chi tiêu cá nhân — Google Sheets + Apps Script + Claude
+# 💰 Sổ chi tiêu cá nhân — Google Sheets + Apps Script + AI
 
-Web app ghi chi tiêu hằng tháng. Dữ liệu nằm trong **Google Sheet của bạn**, giao diện mở được trên điện thoại, và **Claude** (tùy chọn) dùng để hiểu câu nhập tự nhiên và nhận xét chi tiêu cuối tháng.
+Web app ghi chi tiêu hằng tháng. Dữ liệu nằm trong **Google Sheet của bạn**, giao diện mở được trên điện thoại, và **AI** (tùy chọn: **Gemini miễn phí** để trải nghiệm, **Claude** khi dùng thật) dùng để hiểu câu nhập tự nhiên và nhận xét chi tiêu cuối tháng.
 
 | Tính năng | Mô tả |
 |---|---|
@@ -8,9 +8,9 @@ Web app ghi chi tiêu hằng tháng. Dữ liệu nằm trong **Google Sheet củ
 | 📊 Tổng quan | KPI tháng, chi theo danh mục so với ngân sách, biểu đồ theo ngày, top 5 khoản lớn, dự báo cuối tháng |
 | 📜 Lịch sử | Lọc theo tháng/danh mục, tìm kiếm, bấm vào khoản để sửa/xóa |
 | 🎯 Ngân sách | Đặt hạn mức tháng cho từng danh mục |
-| 🤖 Nhận xét tháng | Claude tóm tắt, chỉ điểm bất thường, đề xuất 3 hành động cho tháng tới |
+| 🤖 Nhận xét tháng | AI tóm tắt, chỉ điểm bất thường, đề xuất 3 hành động cho tháng tới |
 
-> Không có API key Claude thì app vẫn chạy đầy đủ, chỉ chuyển sang **bộ tách offline** (hiểu `45k`, `1tr2`, `2,5tr`, `1.200.000`, `hôm qua`, `hôm kia`, `05/10`, `ck`, `thẻ`, `momo`, `tiền mặt`) và nhận xét theo quy tắc.
+> Không có API key thì app vẫn chạy đầy đủ, chỉ chuyển sang **bộ tách offline** (hiểu `45k`, `1tr2`, `2,5tr`, `1.200.000`, `hôm qua`, `hôm kia`, `05/10`, `ck`, `thẻ`, `momo`, `tiền mặt`) và nhận xét theo quy tắc.
 
 ---
 
@@ -41,18 +41,32 @@ Trong trình soạn thảo Apps Script:
 
 > Mỗi lần sửa code: **Deploy → Manage deployments → ✏️ → Version: New version → Deploy**. URL giữ nguyên.
 
-### Bước 5 — Bật Claude (tùy chọn)
-1. Tạo API key tại [platform.claude.com](https://platform.claude.com) → *API Keys*.
-2. Apps Script → **Project Settings ⚙️ → Script properties → Add script property**:
+### Bước 5 — Bật AI (tùy chọn)
 
-| Property | Giá trị | Bắt buộc |
+**Cách A: Gemini, miễn phí (khuyên dùng để trải nghiệm)**
+1. Vào [aistudio.google.com](https://aistudio.google.com), đăng nhập bằng Gmail → **Get API key** → **Create API key**. Không cần thẻ.
+2. Apps Script → **Project Settings ⚙️ → Script properties → Add script property**: `GEMINI_API_KEY` = key vừa tạo.
+3. Tải lại web app. Ô nhập sẽ hiện **🤖 Gemini đang bật**.
+
+> Gói free có giới hạn số lượt/ngày (xem trong AI Studio) và Google có thể dùng dữ liệu gói free để cải thiện model. App chỉ gửi câu bạn gõ và số liệu tổng hợp tháng, không gửi cả Sheet.
+
+**Cách B: Claude (khi dùng thật)**
+1. Tạo API key tại [platform.claude.com](https://platform.claude.com) → *API Keys* (cần nạp credit; tính tiền riêng, không dùng chung gói Claude Pro/Max).
+2. Thêm `ANTHROPIC_API_KEY` và đặt `AI_PROVIDER` = `claude`.
+
+**Tất cả các cài đặt**
+
+| Property | Giá trị | Ghi chú |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | `sk-ant-...` | Có, để bật Claude |
-| `CLAUDE_MODEL` | Mặc định `claude-opus-5-5`. Đổi sang `claude-sonnet-5-5` hoặc `claude-haiku-4-5` nếu muốn rẻ và nhanh hơn | Không |
+| `AI_PROVIDER` | `gemini` / `claude` / `off` | Bỏ trống: tự chọn theo key đang có, ưu tiên Gemini |
+| `GEMINI_API_KEY` | key từ AI Studio | |
+| `GEMINI_MODEL` | mặc định `gemini-flash-latest` | Luôn trỏ tới bản Flash mới nhất |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | |
+| `CLAUDE_MODEL` | mặc định `claude-opus-5-5` | `claude-haiku-4-5` rẻ và nhanh hơn |
 
-3. Tải lại web app. Ô nhập sẽ hiện **🤖 Claude đang bật**.
+Chuyển từ Gemini sang Claude: chỉ cần thêm Claude key và đổi `AI_PROVIDER`, **không sửa code, không deploy lại**.
 
-Nếu Claude lỗi (hết credit, mất mạng…), app tự chuyển về bộ tách offline và báo cho bạn biết, không làm mất dữ liệu.
+Nếu AI lỗi (hết hạn mức, hết credit, mất mạng…), app tự chuyển về bộ tách offline và báo cho bạn biết, không làm mất dữ liệu.
 
 ---
 
@@ -77,9 +91,9 @@ Mẹo: bộ tách offline chọn danh mục theo **từ khóa khớp dài nhất
 
 - Web app để chế độ **Only myself**: chỉ tài khoản Google của bạn mở được.
 - API key lưu trong *Script properties*, không nằm trong code hay Sheet.
-- Claude chỉ nhận: câu bạn vừa gõ (khi phân tích) và số liệu tổng hợp tháng (khi nhận xét). Không gửi cả Sheet.
+- AI chỉ nhận: câu bạn vừa gõ (khi phân tích) và số liệu tổng hợp tháng (khi nhận xét). Không gửi cả Sheet.
 - Không nhập số thẻ hay số tài khoản vào mô tả.
-- Chi phí Claude: mỗi lần tách câu chỉ tốn vài trăm token, chi phí rất nhỏ. Nhận xét tháng tốn nhiều hơn một chút.
+- Chi phí: Gemini gói free là 0đ trong hạn mức. Claude: mỗi lần tách câu tốn vài trăm token (vài trăm đồng); nhận xét tháng tốn hơn một chút.
 - Với các model hỗ trợ, code bật `fallbacks: "default"`: nếu bộ lọc an toàn của Claude từ chối nhầm một yêu cầu, API tự chạy lại bằng model dự phòng.
 
 ## Lộ trình mở rộng gợi ý
@@ -88,4 +102,4 @@ Mẹo: bộ tách offline chọn danh mục theo **từ khóa khớp dài nhất
 |---|---|
 | P2 | Khoản chi định kỳ tự động (tiền nhà, Netflix) bằng *time-driven trigger*; email tổng kết ngày 1 hằng tháng |
 | P2 | Theo dõi thu nhập và tỷ lệ tiết kiệm |
-| P3 | Chụp hóa đơn → Claude đọc ảnh; dán SMS/thông báo ngân hàng để tự nhận diện |
+| P3 | Chụp hóa đơn → AI đọc ảnh; dán SMS/thông báo ngân hàng để tự nhận diện |

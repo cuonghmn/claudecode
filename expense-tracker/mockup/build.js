@@ -4,7 +4,7 @@
  * → expense-tracker/mockup/index.html
  *
  * Google Sheet được giả lập trong trình duyệt (lưu localStorage), nên mọi nút
- * trong mockup chạy đúng logic của app thật. Claude chưa bật (chế độ offline).
+ * trong mockup chạy đúng logic của app thật. AI chưa bật (chế độ offline).
  */
 const fs = require('fs');
 const path = require('path');
@@ -129,7 +129,7 @@ const FEEDBACK = [
   ['dashboard', 'Tổng quan tháng', '4 KPI, cảnh báo dự báo vượt ngân sách, chi theo danh mục, theo ngày, top 5 khoản. Đúng thứ Rio cần nhìn?'],
   ['budget', 'Ngân sách theo danh mục', 'Mức mẫu tổng 19,3 triệu/tháng. Cách đặt theo từng danh mục có phù hợp?'],
   ['history', 'Lịch sử & sửa/xóa', 'Lọc theo tháng, danh mục, tìm kiếm; bấm vào khoản để sửa/xóa.'],
-  ['review', 'Nhận xét cuối tháng', 'Bản mockup dùng nhận xét theo quy tắc; bật Claude sẽ có phân tích và 3 hành động cụ thể.']
+  ['review', 'Nhận xét cuối tháng', 'Bản mockup dùng nhận xét theo quy tắc; bật AI (Gemini/Claude) sẽ có phân tích và 3 hành động cụ thể.']
 ];
 const WISHES = ['Theo dõi thu nhập', 'Khoản chi định kỳ tự động', 'Mục tiêu tiết kiệm', 'Dùng chung với gia đình',
   'Nhiều ví / tài khoản', 'Chụp hóa đơn', 'Email tổng kết hằng tháng', 'Xuất báo cáo'];
