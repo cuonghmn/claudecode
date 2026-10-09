@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hướng dẫn sử dụng Sổ chi tiêu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: máy tính = khung điện thoại bên trái + bảng điều khiển bên phải; điện thoại = app ở trên, phụ đề + nút ở dưới. */
+  :root {
+    --bg: #eef3f2; --card: #ffffff; --text: #15211f; --muted: #566769; --line: #dbe5e4;
+    --brand: #0f766e; --brand-soft: #e3f3f0; --on-brand: #ffffff; --accent: #f59e0b;
+    --phone: #1b2826;
+    --font: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1211; --card: #152120; --text: #e4eeec; --muted: #93a6a3; --line: #263533;
+      --brand: #2dd4bf; --brand-soft: #123a36; --on-brand: #062a27; --phone: #000000; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1211; --card: #152120; --text: #e4eeec; --muted: #93a6a3; --line: #263533;
+    --brand: #2dd4bf; --brand-soft: #123a36; --on-brand: #062a27; --phone: #000000; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 20px 16px 32px; }
+  header h1 { font-size: 24px; margin: 0; text-wrap: balance; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  header a { color: var(--brand); }
+  .layout { display: grid; grid-template-columns: 410px 1fr; gap: 28px; margin-top: 20px; align-items: start; }
+  .phone { background: var(--phone); border-radius: 38px; padding: 10px; box-shadow: 0 20px 50px rgba(10, 30, 28, .25); position: sticky; top: 16px; }
+  .phone iframe { display: block; width: 100%; height: min(780px, calc(100vh - 60px)); border: 0; border-radius: 30px; background: var(--card); }
+  .panel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .caption { font-size: 20px; font-weight: 600; margin: 6px 0 0; min-height: 60px; text-wrap: balance; }
+  .caption .n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent); color: #1b1300; font-size: 15px; margin-right: 8px; vertical-align: 3px; }
+  .dots { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .dots i { width: 22px; height: 6px; border-radius: 3px; background: var(--line); }
+  .dots i.done { background: var(--brand); opacity: .5; }
+  .dots i.on { background: var(--brand); }
+  .controls { display: flex; gap: 8px; margin-top: 14px; }
+  button { font: inherit; border: 0; border-radius: 12px; cursor: pointer; min-height: 46px; padding: 10px 16px; font-weight: 600; }
+  button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn { background: var(--brand-soft); color: var(--brand); }
+  .btn.main { background: var(--brand); color: var(--on-brand); flex: 1; }
+  .chapters { display: grid; gap: 8px; }
+  .chap { display: flex; gap: 12px; align-items: center; text-align: left; background: transparent; color: var(--text);
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-weight: 500; width: 100%; }
+  .chap b { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 8px; background: var(--brand-soft); color: var(--brand); font-size: 14px; }
+  .chap span { display: block; }
+  .chap small { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
+  .chap.on { border-color: var(--brand); background: var(--brand-soft); }
+  .chap.on b { background: var(--brand); color: var(--on-brand); }
+  .note { font-size: 13px; color: var(--muted); }
+  .loading { position: absolute; inset: 10px; border-radius: 30px; display: grid; place-items: center; background: var(--card); color: var(--muted); }
+
+  /* Điện thoại: app chiếm phần lớn màn hình, phụ đề + nút dính đáy */
+  @media (max-width: 860px) {
+    .wrap { padding: 12px 12px 0; }
+    header h1 { font-size: 19px; }
+    header p { font-size: 13px; }
+    .layout { grid-template-columns: 1fr; gap: 12px; margin-top: 10px; }
+    .phone { position: relative; top: 0; padding: 0; border-radius: 18px; background: transparent; box-shadow: none; border: 1px solid var(--line); }
+    .phone iframe { height: calc(100dvh - 300px); min-height: 440px; border-radius: 18px; }
+    .loading { inset: 0; border-radius: 18px; }
+    .panel .now { position: sticky; bottom: 0; z-index: 3; border-radius: 16px 16px 0 0; margin: 0 -12px; box-shadow: 0 -6px 18px rgba(0,0,0,.08);
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+    .caption { font-size: 16px; min-height: 48px; }
+    .panel { display: flex; flex-direction: column-reverse; }
+    .chapters { grid-auto-flow: column; grid-auto-columns: 78%; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+    .chap { scroll-snap-align: start; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Hướng dẫn sử dụng Sổ chi tiêu</h1>
+    <p>App bên dưới là app thật với dữ liệu mẫu và tự diễn từng thao tác. Bấm ⏸ để dừng và tự bấm thử; chọn một luồng để xem lại. <a href="index.html">← Bộ tài liệu</a></p>
+  </header>
+  <div class="layout">
+    <div class="phone" id="phone">
+      <iframe id="app" title="App Sổ chi tiêu (dữ liệu mẫu)"></iframe>
+      <div class="loading" id="loading">Đang mở app…</div>
+    </div>
+    <div class="panel">
+      <div class="card now" aria-live="polite">
+        <div class="eyebrow" id="where">Luồng 1/7 · Bước 1</div>
+        <p class="caption" id="caption">Đang chuẩn bị…</p>
+        <div class="dots" id="dots"></div>
+        <div class="controls">
+          <button class="btn" id="btnPrev" aria-label="Bước trước">⏮</button>
+          <button class="btn main" id="btnPlay">⏸ Tạm dừng</button>
+          <button class="btn" id="btnNext" aria-label="Bước sau">⏭</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="eyebrow" style="margin-bottom:10px">7 luồng thao tác</div>
+        <div class="chapters" id="chapters"></div>
+        <p class="note" style="margin:12px 0 0">Mỗi luồng bắt đầu lại từ dữ liệu mẫu sạch, nên bạn có thể bấm thử thoải mái.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const APP_HTML = /*__APP_HTML__*/null;
+
+/* ---------- Ngày tháng dùng trong kịch bản (cùng cách tính với app) ---------- */
+const pad = n => String(n).padStart(2, '0');
+const now = new Date();
+const YM = (y, m) => { const d = new Date(y, m, 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1); };
+const PREV_YM = YM(now.getFullYear(), now.getMonth() - 1);
+const NEXT_YM = YM(now.getFullYear(), now.getMonth() + 1);
+
+/* ---------- Bộ chọn phần tử trong app ---------- */
+const byText = (sel, text) => doc => [...doc.querySelectorAll(sel)].find(e => e.textContent.includes(text));
+const cardWith = text => doc => [...doc.querySelectorAll('#dash .card')].find(c => { const h = c.querySelector('h2'); return h && h.textContent.includes(text); });
+const budRow = name => doc => [...doc.querySelectorAll('#budgetList .cat-row')].find(r => r.textContent.includes(name));
+const inRow = (name, sel) => doc => { const r = budRow(name)(doc); return r && r.querySelector(sel); };
+const modalBtn = text => doc => [...doc.querySelectorAll('#modalBody button')].find(b => b.textContent.trim() === text);
+
+/* ---------- Kịch bản: 7 luồng ----------
+   a: show (chỉ chú thích) | click | type (gõ từng chữ) | select | fill (nhập số rồi rời ô)
+   until: chờ phần tử xuất hiện sau thao tác; wait: chờ thêm (ms) */
+const CHAPTERS = [
+  { title: 'Ghi bằng câu tự nhiên', sub: 'Gõ → Phân tích → Lưu → Hoàn tác', tab: 'add', steps: [
+    { t: '#quick', a: 'type', v: 'trưa phở 55k, grab 32k', text: 'Gõ tự nhiên: tên món + số tiền. App hiểu 45k, 1tr2, “hôm qua”, “thẻ”, “ck”…' },
+    { t: '#btnParse', a: 'click', text: 'Nhấn Enter hoặc bấm Phân tích', until: '#previewList .preview' },
+    { t: '#previewList', a: 'show', text: 'App tách thành từng khoản. Sửa mô tả, số tiền, ngày, danh mục nếu cần' },
+    { t: '#btnSave', a: 'click', text: 'Bấm Lưu (hoặc nhấn Enter lần nữa)', until: '.toast' },
+    { t: '.toast', a: 'show', text: 'Lỡ tay? Bấm Hoàn tác trong 5 giây', dwell: 2600 },
+    { t: '#recent .day-h', a: 'show', text: 'Khoản vừa ghi nằm ngay trong Gần đây, gom theo từng ngày', until: '#recent .tx' }
+  ]},
+  { title: 'Ghi lại nhanh trong 2 chạm', sub: 'Các khoản bạn hay ghi nhất', tab: 'add', steps: [
+    { t: '#examples', a: 'show', text: 'Ghi lại nhanh: các khoản bạn hay ghi nhất, kèm số tiền lần gần nhất' },
+    { t: '#examples .chip', a: 'click', text: 'Chạm 1 lần để thêm vào danh sách chờ lưu', until: '#previewList .preview' },
+    { t: '#btnSave', a: 'click', text: 'Chạm Lưu là xong', until: '.toast' }
+  ]},
+  { title: 'Nhập tay & thêm danh mục mới', sub: 'Tạo danh mục ngay lúc ghi', tab: 'add', steps: [
+    { t: 'button[onclick="openManual()"]', a: 'click', text: 'Muốn nhập từng ô? Bấm “+ Nhập tay”', until: '#fAmt' },
+    { t: '#fAmt', a: 'type', v: '250000', text: 'Nhập số tiền' },
+    { t: '#fDesc', a: 'type', v: 'Pate cho mèo', text: 'Mô tả ngắn để dễ tìm lại' },
+    { t: '#fCat', a: 'select', v: '__new__', text: 'Chưa có danh mục phù hợp? Chọn “＋ Thêm danh mục mới…”', until: '#qaModal:not(.hidden)' },
+    { t: '#qaName', a: 'type', v: 'Thú cưng', text: 'Đặt tên danh mục mới' },
+    { t: byText('#qaIcons button', '🐶'), a: 'click', text: 'Chọn icon' },
+    { t: '#btnQa', a: 'click', text: '“Thêm & chọn”: danh mục mới được chọn luôn cho khoản đang ghi', wait: 900 },
+    { t: '#btnM', a: 'click', text: 'Lưu. Danh mục mới chưa có ngân sách nên sẽ hiện “Ngoài ngân sách”', until: '.toast' }
+  ]},
+  { title: 'Xem chi tiêu gần đây', sub: '3 ngày, 5 ngày, tuần, tháng', tab: 'add', steps: [
+    { t: '#recentRange', a: 'show', text: 'Chọn khoảng thời gian: 3 ngày (mặc định), 5 ngày, tuần này, tháng này' },
+    { t: '#recentRange [data-r="week"]', a: 'click', text: 'Ví dụ: Tuần này (tính từ thứ 2)', wait: 700 },
+    { t: '#recentSummary', a: 'show', text: 'Tổng chi và tiền để dành của cả khoảng đã chọn' },
+    { t: '#recent .day-h', a: 'show', text: 'Mỗi ngày có số khoản và tổng tiền riêng' },
+    { t: '#recent .tx', a: 'show', text: 'Bấm vào một khoản để sửa hoặc xóa' }
+  ]},
+  { title: 'Tổng quan tháng', sub: 'Dải tháng, KPI, để dành, cảnh báo', tab: 'add', steps: [
+    { t: 'nav [data-tab="dash"]', a: 'click', text: 'Mở Tổng quan', until: '#dash .kpis' },
+    { t: '#dashStrip', a: 'show', text: 'Dải tháng: bấm hoặc vuốt để chọn. Dưới mỗi tháng là tổng chi để so nhanh' },
+    { t: '#dashStrip .mchip[data-ym="' + PREV_YM + '"]', a: 'click', text: 'Bấm tháng trước để xem lại', wait: 900 },
+    { t: '#dashStrip .mchip.now', a: 'click', text: 'Quay về Tháng này', wait: 900, until: '#dash .kpis' },
+    { t: '.kpis', a: 'show', text: '4 chỉ số: tổng chi, ngân sách còn, so cùng kỳ tháng trước, chi thường mỗi ngày & dự báo' },
+    { t: cardWith('Để dành'), a: 'show', text: 'Để dành (tiết kiệm, đầu tư) theo dõi riêng so với mục tiêu, không tính vào chi tiêu' },
+    { t: doc => [...doc.querySelectorAll('#dash .card')].find(c => c.textContent.includes('Với tốc độ hiện tại')) || cardWith('Theo danh mục')(doc),
+      a: 'show', text: 'Cảnh báo sớm khi dự báo cuối tháng vượt ngân sách' },
+    { t: cardWith('Theo danh mục'), a: 'show', text: 'Từng danh mục so với hạn mức: xanh là ổn, cam là sắp chạm, đỏ là đã vượt' },
+    { t: '#btnReview', a: 'click', text: 'Nhận xét tháng. Khi bật Gemini sẽ có phân tích và 3 hành động cụ thể', until: '#review h3' },
+    { t: '#review', a: 'show', text: 'Kết quả nhận xét hiện ngay bên dưới' }
+  ]},
+  { title: 'Lịch sử & sửa, xóa', sub: 'Lọc theo tháng, khoảng ngày, danh mục', tab: 'add', steps: [
+    { t: 'nav [data-tab="hist"]', a: 'click', text: 'Mở Lịch sử', until: '#hist .tx' },
+    { t: '#histStrip', a: 'show', text: 'Xem theo tháng bằng dải tháng' },
+    { t: '#hMode [data-m="range"]', a: 'click', text: 'Hoặc chọn “Từ ngày → đến ngày”', wait: 900 },
+    { t: '#hRangeBox', a: 'show', text: 'Chọn 2 ngày bất kỳ, kể cả qua 2 tháng' },
+    { t: '#hMode [data-m="month"]', a: 'click', text: 'Quay lại xem theo tháng', wait: 900 },
+    { t: '#hCat', a: 'select', v: 'Ăn uống', text: 'Lọc theo danh mục. Ô bên cạnh để tìm theo mô tả', wait: 900 },
+    { t: '#hist .tx', a: 'click', text: 'Bấm một khoản để sửa', until: '#fDesc' },
+    { t: '#btnDel', a: 'show', text: 'Xóa phải bấm 2 lần để tránh nhầm, và vẫn Hoàn tác được' },
+    { t: modalBtn('Hủy'), a: 'click', text: 'Đóng lại', wait: 400 }
+  ]},
+  { title: 'Ngân sách theo tháng', sub: 'Chỉnh riêng tháng, mặc định, danh mục', tab: 'add', steps: [
+    { t: 'nav [data-tab="budget"]', a: 'click', text: 'Mở Ngân sách', until: '#budgetList .cat-row' },
+    { t: '#budStrip', a: 'show', text: 'Chọn tháng cần đặt ngân sách. Đặt trước được cho các tháng tới' },
+    { t: '#budStrip .mchip[data-ym="' + NEXT_YM + '"]', a: 'click', text: 'Ví dụ: tháng sau có đám cưới', wait: 900, until: '#budgetList .cat-row' },
+    { t: inRow('Gia đình', 'input'), a: 'fill', v: '5000000', text: 'Nhập hạn mức mới: chỉ áp dụng cho tháng này, tự lưu khi rời ô', wait: 1000 },
+    { t: inRow('Gia đình', '.ovrinfo'), a: 'show', text: 'Đánh dấu “Riêng tháng này”, kèm mức mặc định để so' },
+    { t: inRow('Gia đình', '.reset'), a: 'show', text: 'Bấm ↺ để quay về mặc định' },
+    { t: '#applyBox', a: 'show', text: 'Muốn giữ số này cho các tháng sau? Bấm “Dùng làm mặc định”. Các tháng trước giữ nguyên' },
+    { t: inRow('Ăn uống', '.cat-name'), a: 'click', text: 'Bấm tên danh mục để sửa mặc định, icon, loại, từ khóa', until: '#cName' },
+    { t: '#cKind', a: 'show', text: 'Loại “Để dành” dùng cho tiết kiệm, đầu tư: không tính vào chi tiêu' },
+    { t: '#cKw', a: 'show', text: 'Từ khóa giúp app tự xếp đúng danh mục khi bạn gõ' },
+    { t: modalBtn('Hủy'), a: 'click', text: 'Đóng lại. Hết hướng dẫn, chúc bạn ghi chép đều tay!', wait: 400 }
+  ]}
+];
+
+/* ---------- Lớp chú thích chèn vào app ---------- */
+const OVERLAY_CSS = `
+  #tour-ring { position: fixed; z-index: 2147483600; pointer-events: none; border-radius: 12px; opacity: 0;
+    box-shadow: 0 0 0 3px #f59e0b, 0 0 0 9999px rgba(8, 20, 19, .42); transition: all .35s ease; }
+  #tour-tag { position: fixed; z-index: 2147483601; pointer-events: none; max-width: min(280px, calc(100vw - 24px)); opacity: 0;
+    background: #0b3b37; color: #fff; font: 600 14px/1.4 "Be Vietnam Pro", system-ui, sans-serif; padding: 10px 12px 10px 10px;
+    border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.35); display: flex; gap: 8px; align-items: flex-start; transition: opacity .25s, transform .25s; }
+  #tour-tag b { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #f59e0b; color: #1b1300; font-size: 12px; }
+  #tour-tag i { position: absolute; width: 12px; height: 12px; background: #0b3b37; transform: rotate(45deg); }
+  #tour-cursor { position: fixed; left: 0; top: 0; z-index: 2147483602; pointer-events: none; width: 26px; height: 26px; margin: -13px 0 0 -13px;
+    border-radius: 50%; background: rgba(245, 158, 11, .55); border: 2px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,.4);
+    transition: transform .65s cubic-bezier(.4, 0, .2, 1), opacity .3s; opacity: 0; }
+  #tour-cursor.tap { animation: tap .45s ease; }
+  @keyframes tap { 0% { scale: 1; } 40% { scale: .7; box-shadow: 0 0 0 10px rgba(245,158,11,.35); } 100% { scale: 1; box-shadow: 0 0 0 22px rgba(245,158,11,0); } }
+  @media (prefers-reduced-motion: reduce) { #tour-ring, #tour-tag, #tour-cursor { transition: none; animation: none; } }
+`;
+
+const frame = document.getElementById('app');
+let W, D;           // window/document của app
+let ring, tag, cursor;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function injectOverlay() {
+  const st = D.createElement('style'); st.textContent = OVERLAY_CSS; D.head.appendChild(st);
+  ring = D.createElement('div'); ring.id = 'tour-ring';
+  tag = D.createElement('div'); tag.id = 'tour-tag';
+  cursor = D.createElement('div'); cursor.id = 'tour-cursor';
+  D.body.append(ring, tag, cursor);
+  // Người xem tự chạm vào app thì tạm dừng, để kịch bản không giành thao tác
+  D.addEventListener('pointerdown', e => { if (e.isTrusted && S.playing) { S.playing = false; render(); } }, true);
+}
+function hideOverlay() { [ring, tag, cursor].forEach(e => e && (e.style.opacity = 0)); }
+
+function resolve(t) { try { return typeof t === 'function' ? t(D) : D.querySelector(t); } catch (e) { return null; } }
+function visible(el) { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+async function waitFor(t, ms) {
+  const end = Date.now() + (ms || 4000);
+  while (Date.now() < end) { const el = resolve(t); if (visible(el)) return el; await sleep(80); }
+  return resolve(t);
+}
+
+function placeOverlay(el, text, n) {
+  const r = el.getBoundingClientRect(), vw = W.innerWidth, vh = W.innerHeight, pad = 6;
+  Object.assign(ring.style, { left: (r.left - pad) + 'px', top: (r.top - pad) + 'px', width: (r.width + pad * 2) + 'px', height: (r.height + pad * 2) + 'px', opacity: 1 });
+  tag.innerHTML = '<b>' + n + '</b><span></span><i></i>';
+  tag.querySelector('span').textContent = text;
+  tag.style.opacity = 0; tag.style.left = '0px'; tag.style.top = '0px';
+  const tw = tag.offsetWidth, th = tag.offsetHeight;
+  const below = r.bottom + pad + 14 + th < vh - 70;      // chừa chỗ thanh tab dưới
+  const top = below ? r.bottom + pad + 12 : Math.max(8, r.top - pad - 12 - th);
+  const left = Math.min(Math.max(8, r.left + r.width / 2 - tw / 2), vw - tw - 8);
+  Object.assign(tag.style, { left: left + 'px', top: top + 'px', opacity: 1 });
+  const arrow = tag.querySelector('i');
+  const ax = Math.min(Math.max(12, r.left + r.width / 2 - left - 6), tw - 24);
+  Object.assign(arrow.style, below ? { top: '-6px', left: ax + 'px' } : { bottom: '-6px', left: ax + 'px' });
+}
+async function moveCursor(el, fast) {
+  const r = el.getBoundingClientRect();
+  cursor.style.opacity = 1;
+  cursor.style.transform = 'translate(' + (r.left + Math.min(r.width / 2, 60)) + 'px,' + (r.top + r.height / 2) + 'px)';
+  if (!fast) await sleep(700);
+}
+async function tap() { cursor.classList.remove('tap'); void cursor.offsetWidth; cursor.classList.add('tap'); await sleep(260); }
+
+/* ---------- Thực hiện 1 bước ---------- */
+async function doStep(step, n, fast) {
+  let el = await waitFor(step.t, fast ? 2500 : 4000);
+  if (!visible(el)) { console.warn('[tour] Không tìm thấy phần tử cho bước:', step.text); if (!el) return; }
+  el.scrollIntoView({ block: 'center', behavior: fast ? 'auto' : 'smooth' });
+  await sleep(fast ? 60 : 420);
+  if (!fast) placeOverlay(el, step.text, n);
+  const a = step.a;
+  if (a !== 'show') {
+    if (!fast) { await moveCursor(el); await tap(); }
+    if (a === 'click') el.click();
+    else if (a === 'select') { el.value = step.v; el.dispatchEvent(new W.Event('change', { bubbles: true })); }
+    else if (a === 'type' || a === 'fill') {
+      el.focus(); el.value = '';
+      for (const ch of step.v) { el.value += ch; el.dispatchEvent(new W.Event('input', { bubbles: true })); if (!fast) await sleep(55); }
+      if (a === 'fill') {
+        el.value = Number(step.v).toLocaleString('vi-VN');   // định dạng như khi người dùng rời ô
+        el.dispatchEvent(new W.Event('change', { bubbles: true }));
+      }
+      el.blur();
+    }
+  } else if (!fast) { cursor.style.opacity = 0; } // bước chỉ chú thích: ẩn con trỏ để không che chữ
+  if (step.wait) await sleep(fast ? Math.min(step.wait, 400) : step.wait);
+  if (step.until) await waitFor(step.until, 4000);
+  if (!fast) { const e2 = resolve(step.t); if (visible(e2) && a === 'show') placeOverlay(e2, step.text, n); }
+}
+
+/* ---------- Điều khiển phát ---------- */
+const S = { ch: 0, step: 0, playing: !matchMedia('(prefers-reduced-motion: reduce)').matches, token: 0, skip: false };
+
+function loadApp() {
+  return new Promise(res => {
+    document.getElementById('loading').style.display = 'grid';
+    frame.onload = async () => {
+      W = frame.contentWindow; D = frame.contentDocument;
+      await waitFor('#recent .tx, #recent .empty', 6000);
+      injectOverlay();
+      document.getElementById('loading').style.display = 'none';
+      res();
+    };
+    frame.srcdoc = APP_HTML;
+  });
+}
+
+async function dwell(step, my) {
+  const need = step.dwell || Math.min(5200, 1500 + step.text.length * 38);
+  let waited = 0;
+  while (my === S.token) {
+    if (S.skip) { S.skip = false; return; }
+    if (S.playing) { waited += 100; if (waited >= need) return; }
+    await sleep(100);
+  }
+}
+
+async function jumpTo(ch, step) {
+  const my = ++S.token;
+  S.ch = ch; S.step = step; S.skip = false; render();
+  await loadApp();
+  if (my !== S.token) return;
+  // Diễn nhanh (không hiệu ứng) các bước trước đó để app về đúng trạng thái
+  const steps = CHAPTERS[ch].steps;
+  for (let i = 0; i < step; i++) { await doStep(steps[i], i + 1, true); if (my !== S.token) return; }
+  for (let i = step; i < steps.length; i++) {
+    if (my !== S.token) return;
+    S.step = i; render();
+    await doStep(steps[i], i + 1, false);
+    if (my !== S.token) return;
+    await dwell(steps[i], my);
+  }
+  if (my !== S.token) return;
+  // Hết luồng: sang luồng tiếp theo
+  if (ch < CHAPTERS.length - 1) jumpTo(ch + 1, 0);
+  else { hideOverlay(); S.playing = false; render(true); }
+}
+
+function render(finished) {
+  const c = CHAPTERS[S.ch], n = c.steps.length;
+  document.getElementById('where').textContent = 'Luồng ' + (S.ch + 1) + '/' + CHAPTERS.length + ' · ' + c.title + ' · Bước ' + (S.step + 1) + '/' + n;
+  document.getElementById('caption').innerHTML = finished
+    ? 'Hết hướng dẫn. Bấm một luồng bên dưới để xem lại.'
+    : '<span class="n">' + (S.step + 1) + '</span>' + c.steps[S.step].text.replace(/[&<>]/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[x]));
+  document.getElementById('dots').innerHTML = c.steps.map((_, i) => '<i class="' + (i < S.step ? 'done' : i === S.step ? 'on' : '') + '"></i>').join('');
+  document.getElementById('btnPlay').textContent = S.playing ? '⏸ Tạm dừng' : '▶ Phát tiếp';
+  document.querySelectorAll('.chap').forEach((b, i) => { b.classList.toggle('on', i === S.ch); b.setAttribute('aria-current', i === S.ch ? 'step' : 'false'); });
+}
+
+document.getElementById('chapters').innerHTML = CHAPTERS.map((c, i) =>
+  '<button class="chap" data-i="' + i + '"><b>' + (i + 1) + '</b><span>' + c.title + '<small>' + c.sub + '</small></span></button>').join('');
+document.querySelectorAll('.chap').forEach(b => b.onclick = () => { S.playing = true; jumpTo(+b.dataset.i, 0); });
+document.getElementById('btnPlay').onclick = () => {
+  if (document.getElementById('caption').textContent.startsWith('Hết hướng dẫn')) { S.playing = true; jumpTo(0, 0); return; }
+  S.playing = !S.playing; render();
+};
+document.getElementById('btnNext').onclick = () => { S.skip = true; };
+document.getElementById('btnPrev').onclick = () => {
+  if (S.step > 0) jumpTo(S.ch, S.step - 1);
+  else if (S.ch > 0) jumpTo(S.ch - 1, CHAPTERS[S.ch - 1].steps.length - 1);
+  else jumpTo(0, 0);
+};
+
+jumpTo(0, 0);
+</script>
+</body>
+</html>

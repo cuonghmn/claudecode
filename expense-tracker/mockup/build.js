@@ -38,9 +38,13 @@ const mockStyle = `
   #fbOut { min-height: 160px; font-size: 13px; }
 `;
 
-const mockScript = `
+/**
+ * Lớp giả lập Google Sheet + google.script.run.
+ * opts.key: khóa localStorage; opts.latency: độ trễ (ms); opts.alwaysReset: luôn nạp lại dữ liệu mẫu khi mở.
+ */
+const mockScriptFor = opts => `
 /* ===== Giả lập Google Apps Script trong trình duyệt ===== */
-const MOCK_KEY = 'so-chi-tieu-mockup-v1';
+const MOCK_KEY = '${opts.key}';
 const Backend = (function () {
   function Sheet(d) { this.d = d || []; }
   Sheet.prototype.getLastRow = function () { return this.d.length; };
@@ -104,7 +108,7 @@ ${code}
     sheets = {}; try { localStorage.removeItem(MOCK_KEY); } catch (e) {}
     setup(); seedDemoData(); persist();
   }
-  if (!restore()) reset(); else setup(); // setup an toàn khi chạy lại: nâng cấp dữ liệu cũ (vd thêm cột Loại)
+  if (${opts.alwaysReset ? 'true' : 'false'} || !restore()) reset(); else setup(); // setup an toàn khi chạy lại: nâng cấp dữ liệu cũ (vd thêm cột Loại)
   return { ${API.join(', ')}, reset };
 })();
 
@@ -116,11 +120,12 @@ window.google = { script: { get run() {
     return (...a) => setTimeout(() => {
       try { ok(JSON.parse(JSON.stringify(Backend[k].apply(null, JSON.parse(JSON.stringify(a)))))); }
       catch (e) { err(e); }
-    }, 500); // giả lập độ trễ gần với Apps Script thật
+    }, ${opts.latency}); // giả lập độ trễ của Apps Script
   } });
   return px;
 } } };
 `;
+const mockScript = mockScriptFor({ key: 'so-chi-tieu-mockup-v1', latency: 500, alwaysReset: false });
 
 const FEEDBACK = [
   ['entry', 'Ghi nhanh bằng câu tự nhiên', 'Thử gõ "trưa phở 55k, grab 32k" → Phân tích → Lưu. Có đủ nhanh để ghi mỗi ngày không?'],
@@ -208,3 +213,15 @@ ${body.replace(/<script>/, '<script>' + feedbackScript)}
 
 fs.writeFileSync(path.join(__dirname, 'index.html'), out);
 console.log('Đã tạo mockup/index.html (' + Math.round(out.length / 1024) + ' KB)');
+
+// Bản app cho "Hướng dẫn sử dụng tự diễn": luôn bắt đầu từ dữ liệu mẫu sạch, độ trễ ngắn, không có thanh mockup.
+const tourApp = `<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+${fontLink}
+<style>${style}</style>
+<script>${mockScriptFor({ key: 'so-chi-tieu-tour-v1', latency: 180, alwaysReset: true })}</script>
+</head><body>${body}</body></html>`;
+const tourDir = path.join(root, 'docs', 'src');
+fs.mkdirSync(tourDir, { recursive: true });
+fs.writeFileSync(path.join(tourDir, 'app-tour.html'), tourApp);
+console.log('Đã tạo docs/src/app-tour.html (' + Math.round(tourApp.length / 1024) + ' KB)');

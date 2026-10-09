@@ -1,5 +1,7 @@
 # 💰 Sổ chi tiêu cá nhân — Google Sheets + Apps Script + AI
 
+> 📚 **Bộ tài liệu cho người dùng:** mở [`docs/index.html`](./docs/index.html) gồm **hướng dẫn cài đặt từng bước** (có nút Copy code) và **hướng dẫn sử dụng tự diễn** trên app thật. Tạo lại sau khi sửa code: `node expense-tracker/mockup/build.js && node expense-tracker/docs/build.js`.
+
 Web app ghi chi tiêu hằng tháng. Dữ liệu nằm trong **Google Sheet của bạn**, giao diện mở được trên điện thoại, và **AI** (tùy chọn: **Gemini miễn phí** để trải nghiệm, **Claude** khi dùng thật) dùng để hiểu câu nhập tự nhiên và nhận xét chi tiêu cuối tháng.
 
 | Tính năng | Mô tả |

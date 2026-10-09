@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cài đặt Sổ chi tiêu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  /* Layout: mỗi màn 1 bước, thanh tiến độ trên cùng, nút Quay lại / Tiếp dính đáy; hình minh họa vẽ lại giao diện Google. */
+  :root {
+    --bg: #eef3f2; --card: #ffffff; --text: #15211f; --muted: #566769; --line: #dbe5e4;
+    --brand: #0f766e; --brand-soft: #e3f3f0; --on-brand: #ffffff; --accent: #f59e0b; --accent-soft: #fef3c7;
+    --warn: #b45309; --code-bg: #f4f7f7; --g-blue: #1a73e8;
+    --font: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1211; --card: #152120; --text: #e4eeec; --muted: #93a6a3; --line: #263533;
+      --brand: #2dd4bf; --brand-soft: #123a36; --on-brand: #062a27; --accent-soft: #3a2a07;
+      --warn: #fbbf24; --code-bg: #0f1918; --g-blue: #8ab4f8; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b1211; --card: #152120; --text: #e4eeec; --muted: #93a6a3; --line: #263533;
+    --brand: #2dd4bf; --brand-soft: #123a36; --on-brand: #062a27; --accent-soft: #3a2a07;
+    --warn: #fbbf24; --code-bg: #0f1918; --g-blue: #8ab4f8; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 16px 16px 120px; }
+  .top { display: flex; align-items: center; gap: 12px; }
+  .top h1 { font-size: 18px; margin: 0; flex: 1; }
+  .top a { color: var(--brand); font-size: 14px; }
+  .progress { height: 6px; background: var(--line); border-radius: 3px; margin: 12px 0 6px; overflow: hidden; }
+  .progress i { display: block; height: 100%; background: var(--brand); border-radius: 3px; transition: width .3s; }
+  .meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+  .meta button { background: none; border: 0; color: var(--brand); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 0; min-height: 36px; }
+
+  .step { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 20px; margin-top: 14px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--brand); }
+  .step h2 { font-size: 24px; line-height: 1.3; margin: 4px 0 6px; text-wrap: balance; }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+  ol.todo { padding-left: 0; list-style: none; counter-reset: s; margin: 14px 0; display: grid; gap: 10px; }
+  ol.todo > li { counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+  ol.todo > li::before { content: counter(s); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--brand-soft); color: var(--brand); font-weight: 700; font-size: 14px; margin-top: 1px; }
+  .ui { font-weight: 600; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+  .en { color: var(--muted); font-size: .9em; }
+  code, .mono { font-family: var(--mono); font-size: .9em; background: var(--code-bg); border-radius: 5px; padding: 1px 5px; }
+  .callout { border-radius: 12px; padding: 12px 14px; margin: 14px 0; font-size: 15px; display: grid; grid-template-columns: 24px 1fr; gap: 8px; }
+  .callout.tip { background: var(--brand-soft); }
+  .callout.warn { background: var(--accent-soft); }
+  .callout b:first-child { font-size: 18px; line-height: 1.3; }
+  a { color: var(--brand); }
+
+  .copybox { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .copybox header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--code-bg); }
+  .copybox header span { flex: 1; min-width: 0; font-family: var(--mono); font-size: 14px; }
+  .copybox header small { color: var(--muted); font-family: var(--font); }
+  .copybox pre { margin: 0; padding: 12px; max-height: 180px; overflow: auto; font: 12px/1.5 var(--mono); background: var(--card); }
+  .copybox textarea { position: absolute; left: -9999px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; font-weight: 600; min-height: 44px; padding: 8px 16px; }
+  button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .btn-copy { background: var(--brand); color: var(--on-brand); min-height: 40px; padding: 6px 14px; }
+  .btn-copy.ok { background: var(--brand-soft); color: var(--brand); }
+  .kv { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; margin: 12px 0; }
+  .kv .k { font-family: var(--mono); font-weight: 600; }
+
+  /* Hình minh họa giao diện Google (vẽ lại, đơn giản hóa) */
+  .shot { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 14px 0; background: var(--card); font-size: 13px; }
+  .shot .bar { display: flex; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--code-bg); flex-wrap: wrap; }
+  .shot .bar .t { font-weight: 600; margin-right: 8px; }
+  .shot .menu span { padding: 3px 7px; border-radius: 5px; }
+  .shot .body { padding: 12px; position: relative; }
+  .hl { outline: 2.5px solid var(--accent); outline-offset: 1px; border-radius: 6px; background: var(--accent-soft); }
+  .mk { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #1b1300;
+    font-size: 11px; font-weight: 700; margin-left: 4px; vertical-align: 1px; }
+  .drop { position: relative; display: inline-block; margin: 6px 0 0 120px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 0; background: var(--card); box-shadow: 0 6px 18px rgba(0,0,0,.12); min-width: 170px; }
+  .drop div { padding: 6px 12px; }
+  .gbtn { display: inline-block; background: var(--g-blue); color: #fff; border-radius: 6px; padding: 3px 12px; font-weight: 600; }
+  .side { display: grid; grid-template-columns: 150px 1fr; min-height: 120px; }
+  .side .files { border-right: 1px solid var(--line); padding: 10px; }
+  .side .files div { padding: 4px 6px; border-radius: 5px; }
+  .side .ed { padding: 10px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .dialog { max-width: 360px; margin: 6px auto; border: 1px solid var(--line); border-radius: 10px; padding: 14px; box-shadow: 0 8px 22px rgba(0,0,0,.12); }
+  .dialog h4 { margin: 0 0 6px; font-size: 15px; }
+  .dialog .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .dialog .row:last-of-type { border-bottom: 0; }
+  .phoneshot { display: flex; gap: 12px; flex-wrap: wrap; }
+  .phoneshot > div { flex: 1; min-width: 200px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+
+  .check { display: flex; gap: 12px; align-items: center; margin-top: 18px; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--line); cursor: pointer; }
+  .check input { width: 22px; height: 22px; accent-color: var(--brand); flex: none; }
+  .check.done { border-style: solid; border-color: var(--brand); background: var(--brand-soft); }
+  .tests { display: grid; gap: 8px; margin: 12px 0; }
+  .tests label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+  .tests input { width: 20px; height: 20px; accent-color: var(--brand); margin-top: 3px; flex: none; }
+  .tests small { display: block; color: var(--muted); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .tablewrap { overflow-x: auto; margin: 12px 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  details { border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; margin: 10px 0; }
+  details summary { cursor: pointer; font-weight: 600; padding: 12px 0; min-height: 44px; }
+  details[open] summary { border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); z-index: 5;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .nav .in { max-width: 760px; margin: 0 auto; display: flex; gap: 10px; }
+  .nav .back { background: var(--brand-soft); color: var(--brand); }
+  .nav .next { background: var(--brand); color: var(--on-brand); flex: 1; }
+  .nav button:disabled { opacity: .4; cursor: default; }
+
+  .toc { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 10; display: flex; justify-content: center; align-items: flex-end; }
+  .toc .sheet { background: var(--card); width: 100%; max-width: 560px; max-height: 85vh; overflow: auto; border-radius: 18px 18px 0 0; padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  @media (min-width: 640px) { .toc { align-items: center; } .toc .sheet { border-radius: 18px; } }
+  .toc button.item { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; background: transparent; color: var(--text); font-weight: 500; border-radius: 10px; }
+  .toc button.item:hover { background: var(--bg); }
+  .toc button.item b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--bg); font-size: 13px; flex: none; }
+  .toc button.item.done b { background: var(--brand); color: var(--on-brand); }
+  .toc button.item.cur { background: var(--brand-soft); }
+  .toc small { color: var(--muted); display: block; font-size: 12px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 560px) { .step { padding: 18px 16px; } .step h2 { font-size: 21px; } .side { grid-template-columns: 110px 1fr; } .drop { margin-left: 40px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Cài đặt Sổ chi tiêu</h1>
+    <a href="index.html">Bộ tài liệu</a>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+  <div class="meta"><span id="count"></span><button id="btnToc">☰ Mục lục</button></div>
+  <article class="step" id="step" aria-live="polite"></article>
+</div>
+<nav class="nav"><div class="in">
+  <button class="back" id="btnBack">← Quay lại</button>
+  <button class="next" id="btnNext">Tiếp →</button>
+</div></nav>
+<div class="toc" id="toc" hidden><div class="sheet">
+  <div style="display:flex;align-items:center"><h2 style="margin:0;flex:1;font-size:18px">Mục lục</h2><button id="btnTocClose" style="background:var(--bg);color:var(--text)">Đóng</button></div>
+  <div id="tocList" style="margin-top:10px;display:grid;gap:4px"></div>
+</div></div>
+
+<script>
+const CODE_GS = /*__CODE_GS__*/'';
+const INDEX_HTML = /*__INDEX_HTML__*/'';
+const MANIFEST = /*__MANIFEST__*/'';
+
+const ui = (vi, en) => '<span class="ui">' + vi + '</span>' + (en ? ' <span class="en">(' + en + ')</span>' : '');
+const mk = n => '<span class="mk">' + n + '</span>';
+const tip = h => '<div class="callout tip"><b>💡</b><div>' + h + '</div></div>';
+const warn = h => '<div class="callout warn"><b>⚠️</b><div>' + h + '</div></div>';
+const lines = s => s.split('\n').length;
+const copyBox = (id, name, content, note) => '<div class="copybox"><header><span>' + name + ' <small>· ' + lines(content).toLocaleString('vi-VN') +
+  ' dòng' + (note ? ' · ' + note : '') + '</small></span><button class="btn-copy" data-copy="' + id + '">Copy</button></header>' +
+  '<pre>' + esc(content.split('\n').slice(0, 12).join('\n')) + '\n…</pre></div>';
+const copyText = (id, text) => '<button class="btn-copy" data-copy="' + id + '">Copy</button>';
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+const CLIP = {
+  code: CODE_GS, index: INDEX_HTML, manifest: MANIFEST,
+  name: 'Sổ chi tiêu', fnname: 'Index', key: 'GEMINI_API_KEY', ver: 'v1.0',
+  report: 'BÁO CÁO 2 TUẦN DÙNG SỔ CHI TIÊU\n- Số ngày có ghi / 14: \n- Thời gian ghi 1 khoản (ước lượng): \n- Cách ghi dùng nhiều nhất (câu tự nhiên / ghi lại nhanh / nhập tay): \n- Số lần mở Tổng quan mỗi tuần: \n- Chi tiêu thực tế so với ngân sách tháng: \n- Lỗi gặp phải (nguyên văn nếu có): \n- Điều thích nhất: \n- Điều phiền nhất: \n- Tính năng muốn có tiếp: '
+};
+
+/* ---------- Nội dung các bước ---------- */
+const STEPS = [
+{ phase: 'Bắt đầu', title: 'Chuẩn bị trước khi cài', html: () => `
+  <p class="lead">Khoảng 30 phút. Làm trên máy tính cho các bước 1–9 (dễ copy, dán), điện thoại dùng từ bước 10.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Cần có</th><th>Ghi chú</th></tr>
+    <tr><td>Tài khoản Google (Gmail)</td><td>Dữ liệu nằm trong Google Drive của bạn</td></tr>
+    <tr><td>Máy tính có Chrome</td><td>Để dán code vào Apps Script</td></tr>
+    <tr><td>Điện thoại</td><td>Để dùng app hằng ngày</td></tr>
+  </table></div>
+  <div class="tablewrap"><table>
+    <tr><th>Giai đoạn</th><th>Bước</th><th>Thời gian</th></tr>
+    <tr><td>Tạo Google Sheet & dán code</td><td>1–5</td><td>~10 phút</td></tr>
+    <tr><td>Khởi tạo & cấp quyền</td><td>6–8</td><td>~5 phút</td></tr>
+    <tr><td>Deploy & mở trên điện thoại</td><td>9–10</td><td>~5 phút</td></tr>
+    <tr><td>Bật AI Gemini (miễn phí)</td><td>11</td><td>~5 phút</td></tr>
+    <tr><td>Kiểm tra & bắt đầu dùng thật</td><td>12–13</td><td>~5 phút</td></tr>
+  </table></div>
+  ${tip('Code của app đã nằm sẵn trong hướng dẫn này. Đến bước cần dán, chỉ việc bấm <b>Copy</b>.')}
+  ${tip('Giao diện Google trong hướng dẫn là <b>hình vẽ lại, đơn giản hóa</b>. Tên nút ghi cả tiếng Việt và tiếng Anh vì tùy cài đặt ngôn ngữ của tài khoản Google, có thể hơi khác vị trí.')}` },
+
+{ phase: 'Google Sheet', title: 'Tạo Google Sheet mới', html: () => `
+  <ol class="todo">
+    <li><div>Mở <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> (tạo ngay một bảng tính trống).</div></li>
+    <li><div>Bấm vào tên <b>"Bảng tính không có tiêu đề"</b> ở góc trên trái, đổi thành <span class="ui">Sổ chi tiêu</span> ${copyText('name')}</div></li>
+  </ol>
+  <div class="shot"><div class="bar"><span class="t hl">Sổ chi tiêu ${mk(2)}</span></div>
+    <div class="body" style="color:var(--muted)">A &nbsp;&nbsp; B &nbsp;&nbsp; C &nbsp;&nbsp; D … (bảng trống)</div></div>
+  ${tip('Đây là nơi lưu toàn bộ dữ liệu. Bạn có thể mở xem, lọc, xuất Excel bất cứ lúc nào.')}` },
+
+{ phase: 'Apps Script', title: 'Mở Apps Script', html: () => `
+  <ol class="todo">
+    <li><div>Trên thanh menu của Google Sheet, bấm ${ui('Tiện ích mở rộng', 'Extensions')}.</div></li>
+    <li><div>Chọn ${ui('Apps Script')}. Một tab mới mở ra: đây là nơi chứa code của app.</div></li>
+    <li><div>Bấm vào tên dự án <b>"Dự án không có tiêu đề"</b> ở góc trên trái, đổi thành <span class="ui">Sổ chi tiêu</span>.</div></li>
+  </ol>
+  <div class="shot"><div class="bar menu"><span class="t">Sổ chi tiêu</span><span>Tệp</span><span>Chỉnh sửa</span><span>Xem</span><span>Chèn</span><span>Định dạng</span><span>Dữ liệu</span><span>Công cụ</span><span class="hl">Tiện ích mở rộng${mk(1)}</span><span>Trợ giúp</span></div>
+    <div class="body"><div class="drop"><div>Tiện ích bổ sung ›</div><div>Macro ›</div><div class="hl">Apps Script ${mk(2)}</div></div></div></div>` },
+
+{ phase: 'Apps Script', title: 'Dán code chính (Code.gs)', html: () => `
+  <ol class="todo">
+    <li><div>Bấm <b>Copy</b> ở khung dưới.</div></li>
+    <li><div>Trong Apps Script, file <span class="mono">Code.gs</span> đang mở sẵn với vài dòng mẫu (<span class="mono">function myFunction()…</span>). Bấm vào vùng code, nhấn <span class="ui">Ctrl + A</span> (Mac: <span class="ui">⌘ + A</span>) rồi <span class="ui">Ctrl + V</span> để thay toàn bộ.</div></li>
+    <li><div>Nhấn <span class="ui">Ctrl + S</span> hoặc biểu tượng 💾 để lưu.</div></li>
+  </ol>
+  ${copyBox('code', 'Code.gs', CODE_GS, 'phần xử lý dữ liệu, ngân sách, AI')}
+  <div class="shot"><div class="bar"><span class="t">Sổ chi tiêu</span><span style="flex:1"></span><span>💾 ${mk(3)}</span><span>▶ Chạy</span><span class="gbtn">Triển khai</span></div>
+    <div class="side"><div class="files"><b>Tệp</b> +<div class="hl">Code.gs</div></div><div class="ed">/** Sổ chi tiêu cá nhân …<br>const SHEET_TX = 'GiaoDich';<br>…</div></div></div>
+  ${warn('Phải <b>thay toàn bộ</b> nội dung cũ. Nếu còn sót <span class="mono">function myFunction()</span> ở đầu cũng không sao, nhưng tốt nhất là xóa sạch.')}` },
+
+{ phase: 'Apps Script', title: 'Tạo file giao diện (Index)', html: () => `
+  <ol class="todo">
+    <li><div>Bấm dấu ${ui('+', 'Add a file')} cạnh chữ <b>Tệp</b> <span class="en">(Files)</span> → chọn ${ui('HTML')}.</div></li>
+    <li><div>Đặt tên đúng là <span class="ui">Index</span> ${copyText('fnname')} rồi nhấn Enter. <b>Không gõ</b> ".html", Apps Script tự thêm.</div></li>
+    <li><div>Xóa hết nội dung mẫu trong file mới, bấm <b>Copy</b> bên dưới rồi dán vào. Lưu (<span class="ui">Ctrl + S</span>).</div></li>
+  </ol>
+  ${copyBox('index', 'Index.html', INDEX_HTML, 'giao diện app')}
+  <div class="shot"><div class="side"><div class="files"><b>Tệp</b> <span class="hl">+${mk(1)}</span><div>Code.gs</div><div class="hl">Index.html ${mk(2)}</div></div>
+    <div class="ed">&lt;!DOCTYPE html&gt;<br>&lt;html lang="vi"&gt;<br>…</div></div></div>
+  ${warn('Tên phải là <b>Index</b>, chữ I viết hoa. Sai tên thì app báo lỗi không tìm thấy giao diện.')}` },
+
+{ phase: 'Apps Script', title: 'Cài đặt múi giờ & quyền truy cập', html: () => `
+  <p class="lead">File cấu hình đặt múi giờ Việt Nam và giới hạn để <b>chỉ mình bạn</b> mở được app.</p>
+  <ol class="todo">
+    <li><div>Ở thanh bên trái, bấm biểu tượng ⚙️ ${ui('Cài đặt dự án', 'Project Settings')}.</div></li>
+    <li><div>Tích vào ô ${ui('Hiển thị tệp kê khai "appsscript.json" trong trình chỉnh sửa', 'Show "appsscript.json" manifest file in editor')}.</div></li>
+    <li><div>Quay lại biểu tượng <b>&lt;&gt;</b> ${ui('Trình chỉnh sửa', 'Editor')}, mở file <span class="mono">appsscript.json</span> vừa xuất hiện.</div></li>
+    <li><div>Chọn hết (<span class="ui">Ctrl + A</span>), bấm <b>Copy</b> bên dưới rồi dán đè. Lưu lại.</div></li>
+  </ol>
+  ${copyBox('manifest', 'appsscript.json', MANIFEST, 'múi giờ + quyền')}
+  ${tip('Bước này không bắt buộc nhưng nên làm. Nếu bỏ qua, nhớ chọn đúng <b>"Chỉ mình tôi"</b> ở bước Deploy.')}` },
+
+{ phase: 'Khởi tạo', title: 'Chạy hàm setup', html: () => `
+  <ol class="todo">
+    <li><div>Mở lại file <span class="mono">Code.gs</span>.</div></li>
+    <li><div>Trên thanh công cụ, ở ô chọn hàm (cạnh nút ▶ Chạy), chọn <span class="ui">setup</span>.</div></li>
+    <li><div>Bấm ${ui('▶ Chạy', 'Run')}.</div></li>
+  </ol>
+  <div class="shot"><div class="bar"><span class="t">Sổ chi tiêu</span><span>💾</span><span class="hl">▶ Chạy ${mk(3)}</span><span>🐞 Gỡ lỗi</span><span class="hl" style="padding:2px 8px">setup ▾ ${mk(2)}</span><span style="flex:1"></span><span class="gbtn">Triển khai</span></div>
+    <div class="body" style="color:var(--muted)">Nhật ký thực thi <span class="en">(Execution log)</span></div></div>
+  ${tip('Lần chạy đầu Google sẽ hỏi quyền. Bước tiếp theo hướng dẫn cách xử lý.')}` },
+
+{ phase: 'Khởi tạo', title: 'Cấp quyền cho app', html: () => `
+  <ol class="todo">
+    <li><div>Hộp thoại ${ui('Cần cấp quyền', 'Authorization required')} → bấm ${ui('Xem xét quyền', 'Review permissions')}.</div></li>
+    <li><div>Chọn tài khoản Google của bạn.</div></li>
+    <li><div>Gặp màn <b>"Google chưa xác minh ứng dụng này"</b> → bấm ${ui('Nâng cao', 'Advanced')} → bấm ${ui('Đi tới Sổ chi tiêu (không an toàn)', 'Go to Sổ chi tiêu (unsafe)')}.</div></li>
+    <li><div>Xem danh sách quyền → bấm ${ui('Cho phép', 'Allow')}.</div></li>
+    <li><div>Quay lại Apps Script: <b>Nhật ký thực thi</b> hiện <span class="ui">Đã hoàn tất thực thi</span> <span class="en">(Execution completed)</span> là xong.</div></li>
+  </ol>
+  <div class="shot"><div class="body">
+    <div class="dialog"><h4>⚠ Google chưa xác minh ứng dụng này</h4><div style="color:var(--muted)">Ứng dụng này yêu cầu truy cập vào thông tin nhạy cảm…</div>
+      <div style="margin-top:8px"><span class="hl">Nâng cao ${mk(3)}</span> &nbsp; <span class="gbtn">Quay lại an toàn</span></div>
+      <div style="margin-top:8px;font-size:12px"><span class="hl">Đi tới Sổ chi tiêu (không an toàn)</span></div></div></div></div>
+  ${tip('<b>Vì sao an toàn?</b> Đây là code do chính bạn dán vào, chạy trên tài khoản của bạn. Google cảnh báo vì app chưa qua kiểm duyệt công khai (app cá nhân không cần). Quyền xin gồm: đọc/ghi Google Sheet này, gọi dịch vụ AI bên ngoài, tạo menu trong Sheet.')}` },
+
+{ phase: 'Khởi tạo', title: 'Kiểm tra Google Sheet', html: () => `
+  <ol class="todo">
+    <li><div>Quay lại tab Google Sheet, tải lại trang (<span class="ui">F5</span>).</div></li>
+    <li><div>Thấy 3 tab ở dưới cùng: <span class="ui">GiaoDich</span> <span class="ui">DanhMuc</span> <span class="ui">NganSachThang</span>.</div></li>
+    <li><div>Thấy menu mới ${ui('💰 Chi tiêu')} trên thanh menu.</div></li>
+  </ol>
+  <div class="shot"><div class="bar menu"><span class="t">Sổ chi tiêu</span><span>Tệp</span><span>…</span><span>Trợ giúp</span><span class="hl">💰 Chi tiêu ${mk(3)}</span></div>
+    <div class="body" style="color:var(--muted)">ID · Ngày · Số tiền · Danh mục · Mô tả …</div>
+    <div class="bar" style="border-top:1px solid var(--line);border-bottom:0"><span class="hl">GiaoDich</span><span class="hl">DanhMuc</span><span class="hl">NganSachThang</span>${mk(2)}</div></div>
+  ${tip('Muốn xem thử với dữ liệu mẫu: menu <b>💰 Chi tiêu → Thêm dữ liệu DEMO</b>. Trước khi dùng thật nhớ chọn <b>Xóa dữ liệu DEMO</b>.')}
+  ${tip('Danh mục và ngân sách mặc định nằm ở tab <b>DanhMuc</b>. Bạn sửa trong app cho tiện, không cần sửa trực tiếp trên Sheet.')}` },
+
+{ phase: 'Deploy', title: 'Deploy thành web app', html: () => `
+  <ol class="todo">
+    <li><div>Trong Apps Script, bấm nút xanh ${ui('Triển khai', 'Deploy')} góc trên phải → ${ui('Tùy chọn triển khai mới', 'New deployment')}.</div></li>
+    <li><div>Bấm biểu tượng ⚙️ cạnh <b>Chọn loại</b> <span class="en">(Select type)</span> → chọn ${ui('Ứng dụng web', 'Web app')}.</div></li>
+    <li><div>Điền:</div></li>
+  </ol>
+  <div class="kv">
+    <span>Mô tả <span class="en">(Description)</span></span><span class="k">v1.0</span>${copyText('ver')}
+    <span>Thực thi với tư cách <span class="en">(Execute as)</span></span><span class="k">Tôi (Me)</span><span></span>
+    <span>Ai có quyền truy cập <span class="en">(Who has access)</span></span><span class="k" style="color:var(--warn)">Chỉ mình tôi (Only myself)</span><span></span>
+  </div>
+  <ol class="todo" start="4" style="counter-reset:s 3">
+    <li><div>Bấm ${ui('Triển khai', 'Deploy')}. Nếu được hỏi quyền lần nữa, làm như bước 7.</div></li>
+    <li><div>Copy <b>URL ứng dụng web</b> <span class="en">(Web app URL)</span>, dạng <span class="mono">https://script.google.com/macros/s/…/exec</span>. Đây là link app của bạn.</div></li>
+  </ol>
+  <div class="shot"><div class="body"><div class="dialog"><h4>Tùy chọn triển khai mới</h4>
+    <div class="row"><span>Chọn loại ⚙️</span><span class="hl">Ứng dụng web ${mk(2)}</span></div>
+    <div class="row"><span>Thực thi với tư cách</span><span>Tôi</span></div>
+    <div class="row"><span>Ai có quyền truy cập</span><span class="hl">Chỉ mình tôi</span></div>
+    <div style="text-align:right;margin-top:10px"><span class="gbtn">Triển khai ${mk(4)}</span></div></div></div></div>
+  ${warn('Luôn chọn <b>"Chỉ mình tôi"</b>. Chọn "Bất kỳ ai" thì người có link sẽ xem được dữ liệu chi tiêu của bạn.')}` },
+
+{ phase: 'Điện thoại', title: 'Mở app trên điện thoại', html: () => `
+  <ol class="todo">
+    <li><div>Gửi link vừa copy cho chính mình (Zalo "Cloud của tôi", email…).</div></li>
+    <li><div>Mở link trên điện thoại bằng <b>Safari</b> (iPhone) hoặc <b>Chrome</b> (Android). Đăng nhập <b>đúng tài khoản Google</b> đã tạo app nếu được hỏi.</div></li>
+    <li><div>Thêm vào màn hình chính để mở như một app:</div></li>
+  </ol>
+  <div class="phoneshot">
+    <div><b>iPhone (Safari)</b><br>Bấm nút <span class="ui">Chia sẻ ⬆</span> → kéo xuống → <span class="ui">Thêm vào MH chính</span> → <span class="ui">Thêm</span>.</div>
+    <div><b>Android (Chrome)</b><br>Bấm <span class="ui">⋮</span> góc trên phải → <span class="ui">Thêm vào màn hình chính</span> → <span class="ui">Thêm</span>.</div>
+  </div>
+  ${tip('Đầu trang có dòng xám <i>"Ứng dụng này do người dùng Google Apps Script tạo"</i>. Đây là dòng Google bắt buộc hiển thị, hoàn toàn bình thường.')}
+  ${tip('Lần mở đầu mất vài giây. Các lần sau nhanh hơn nhờ app lưu tạm dữ liệu.')}` },
+
+{ phase: 'Bật AI', title: 'Bật Gemini (miễn phí)', html: () => `
+  <p class="lead">Không bật AI thì app vẫn chạy (bộ tách câu offline). Bật Gemini để app hiểu câu tự do hơn và có nhận xét tháng.</p>
+  <ol class="todo">
+    <li><div>Mở <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a>, đăng nhập Gmail.</div></li>
+    <li><div>Bấm ${ui('Get API key')} → ${ui('Create API key')} → copy key (chuỗi bắt đầu bằng <span class="mono">AIza…</span>).</div></li>
+    <li><div>Quay lại Apps Script → ⚙️ ${ui('Cài đặt dự án', 'Project Settings')} → kéo xuống ${ui('Thuộc tính tập lệnh', 'Script properties')} → ${ui('Thêm thuộc tính tập lệnh', 'Add script property')}.</div></li>
+    <li><div>Điền rồi bấm ${ui('Lưu thuộc tính tập lệnh', 'Save script properties')}:</div></li>
+  </ol>
+  <div class="kv">
+    <span>Thuộc tính <span class="en">(Property)</span></span><span class="k">GEMINI_API_KEY</span>${copyText('key')}
+    <span>Giá trị <span class="en">(Value)</span></span><span class="k">AIza… (key vừa copy)</span><span></span>
+  </div>
+  <ol class="todo" start="5" style="counter-reset:s 4">
+    <li><div>Mở lại app trên điện thoại: cạnh tiêu đề "Ghi chi tiêu" hiện <span class="ui">🤖 Gemini</span>. <b>Không cần deploy lại.</b></div></li>
+  </ol>
+  ${warn('<b>Giữ key bí mật.</b> Không gửi key cho ai, không dán vào Sheet. Gói miễn phí có giới hạn lượt/ngày; Google có thể dùng dữ liệu gói free để cải thiện model. App chỉ gửi câu bạn gõ và số liệu tổng hợp tháng.')}` },
+
+{ phase: 'Kiểm tra', title: 'Kiểm tra nhanh 5 phút', html: () => `
+  <p class="lead">Làm lần lượt trên điện thoại, tích vào từng mục đạt. Mục nào lỗi, xem <b>Xử lý lỗi</b> ở bước cuối.</p>
+  <div class="tests" id="tests">
+    ${[
+      ['Mở app thấy dữ liệu trống và nhãn 🤖 Gemini', 'Nếu thấy ⚙️ Offline: kiểm tra lại bước 11'],
+      ['Gõ "trưa phở 55k, grab 32k", nhấn Enter → hiện 2 khoản', 'Ăn uống 55.000đ và Đi lại 32.000đ'],
+      ['Bấm Lưu → 2 khoản xuất hiện trong Gần đây', ''],
+      ['Bấm Hoàn tác trên thông báo → 2 khoản biến mất', 'Sau đó ghi lại để dùng tiếp'],
+      ['Mở Google Sheet tab GiaoDich → thấy các dòng mới', 'Dữ liệu lưu thẳng vào Sheet của bạn'],
+      ['Tab Tổng quan hiện số liệu tháng này', ''],
+      ['Tab Ngân sách: chọn tháng sau, sửa một hạn mức → hiện "Riêng tháng này"', 'Bấm ↺ để trả lại mặc định'],
+      ['Tổng quan → "Hỏi Gemini" → có nhận xét', 'Cần vài khoản chi để có nội dung']
+    ].map((t, i) => '<label><input type="checkbox" data-test="' + i + '"><span>' + t[0] + (t[1] ? '<small>' + t[1] + '</small>' : '') + '</span></label>').join('')}
+  </div>
+  <p id="testResult" class="lead"></p>` },
+
+{ phase: 'Dùng thật', title: 'Bắt đầu 2 tuần dùng thật', html: () => `
+  <ol class="todo">
+    <li><div>Nếu đã thêm dữ liệu DEMO: Google Sheet → menu <b>💰 Chi tiêu → Xóa dữ liệu DEMO</b>.</div></li>
+    <li><div>Tab <b>Ngân sách</b>: chỉnh hạn mức tháng này cho sát thực tế (bấm tên danh mục để sửa mặc định).</div></li>
+    <li><div>Ghi <b>ngay sau khi chi</b>. Dùng "Ghi lại nhanh" cho khoản lặp lại.</div></li>
+    <li><div>Tối trước khi ngủ: mở "Gần đây" xem đã ghi đủ chưa. Cuối tuần: mở Tổng quan.</div></li>
+  </ol>
+  <div class="tablewrap"><table>
+    <tr><th>Chỉ số (2 tuần)</th><th>Mục tiêu</th><th>Xem ở đâu</th></tr>
+    <tr><td><b>Số ngày có ghi / 14</b> (chỉ số chính)</td><td>≥ 11 ngày (80%)</td><td>Lịch sử, chọn khoảng 14 ngày</td></tr>
+    <tr><td>Thời gian ghi 1 khoản</td><td>≤ 10 giây</td><td>Tự cảm nhận</td></tr>
+    <tr><td>Ghi bằng câu tự nhiên / Ghi lại nhanh</td><td>≥ 70% số khoản</td><td>Tự ước lượng</td></tr>
+    <tr><td>Mở Tổng quan</td><td>≥ 2 lần/tuần</td><td>Tự ghi nhận</td></tr>
+    <tr><td>Chi tiêu so với ngân sách</td><td>Lệch ≤ 10%</td><td>Tổng quan</td></tr>
+  </table></div>
+  <p>Sau 14 ngày, copy mẫu báo cáo dưới đây, điền rồi gửi cho Claude để quyết định bước tiếp theo:</p>
+  <div class="copybox"><header><span>Mẫu báo cáo 2 tuần</span><button class="btn-copy" data-copy="report">Copy</button></header><pre>${esc(CLIP.report)}</pre></div>` },
+
+{ phase: 'Phụ lục', title: 'Cập nhật, xử lý lỗi & chuyển sang Claude', html: () => `
+  <details open><summary>🔄 Cập nhật code khi có bản mới</summary>
+    <ol class="todo">
+      <li><div>Dán code mới vào <span class="mono">Code.gs</span> và/hoặc <span class="mono">Index</span> như bước 3–4, rồi lưu.</div></li>
+      <li><div>${ui('Triển khai', 'Deploy')} → ${ui('Quản lý các lần triển khai', 'Manage deployments')} → bấm ✏️ → ở <b>Phiên bản</b> <span class="en">(Version)</span> chọn ${ui('Phiên bản mới', 'New version')} → ${ui('Triển khai', 'Deploy')}.</div></li>
+      <li><div>Link app <b>giữ nguyên</b>. Nếu bản mới thêm cột/sheet, chạy lại menu <b>💰 Chi tiêu → Khởi tạo</b> (an toàn, không mất dữ liệu).</div></li>
+    </ol>
+    ${warn('Chỉ lưu code mà không tạo "Phiên bản mới" thì app trên điện thoại vẫn chạy bản cũ.')}
+  </details>
+  <details><summary>🛠 Xử lý lỗi thường gặp</summary>
+    <div class="tablewrap"><table>
+      <tr><th>Hiện tượng</th><th>Cách xử lý</th></tr>
+      <tr><td>App báo "Chưa khởi tạo" / không tìm thấy sheet</td><td>Chạy lại hàm <b>setup</b> (bước 6), hoặc menu 💰 Chi tiêu → Khởi tạo</td></tr>
+      <tr><td>Lỗi không tìm thấy HTML "Index"</td><td>File giao diện phải tên đúng <b>Index</b> (bước 4)</td></tr>
+      <tr><td>"Script function not found: doGet"</td><td>Code.gs chưa được lưu hoặc dán thiếu. Dán lại, lưu, tạo phiên bản mới</td></tr>
+      <tr><td>"Bạn cần có quyền truy cập" khi mở link</td><td>Đăng nhập đúng tài khoản Google đã tạo app (trên điện thoại kiểm tra trong Chrome/Safari)</td></tr>
+      <tr><td>Thông báo "Gemini lỗi, đã dùng bộ tách offline: hết hạn mức"</td><td>Hết lượt miễn phí trong ngày. App vẫn chạy offline, hôm sau tự hoạt động lại</td></tr>
+      <tr><td>"Gemini HTTP 400 … API key not valid"</td><td>Copy lại key ở AI Studio, sửa thuộc tính <b>GEMINI_API_KEY</b> (không có dấu cách thừa)</td></tr>
+      <tr><td>Sửa code xong nhưng app không đổi</td><td>Chưa tạo <b>Phiên bản mới</b> khi triển khai (xem mục Cập nhật)</td></tr>
+      <tr><td>Lỗi khác</td><td>Chụp màn hình hoặc copy nguyên văn thông báo, gửi cho Claude</td></tr>
+    </table></div>
+  </details>
+  <details><summary>🤖 Chuyển sang Claude sau này (trả phí)</summary>
+    <ol class="todo">
+      <li><div>Tạo API key tại <a href="https://platform.claude.com" target="_blank" rel="noopener">platform.claude.com</a> → <b>API Keys</b>. Cần nạp credit trả trước; tính phí riêng, không dùng chung gói Claude Pro/Max.</div></li>
+      <li><div>Script properties: thêm <span class="mono">ANTHROPIC_API_KEY</span> = key (bắt đầu bằng <span class="mono">sk-ant-</span>).</div></li>
+      <li><div>Thêm <span class="mono">AI_PROVIDER</span> = <span class="mono">claude</span>. Muốn quay về Gemini thì đổi thành <span class="mono">gemini</span>.</div></li>
+      <li><div>(Tùy chọn) <span class="mono">CLAUDE_MODEL</span>: mặc định <span class="mono">claude-opus-5-5</span>; đặt <span class="mono">claude-haiku-4-5</span> nếu muốn rẻ và nhanh hơn.</div></li>
+    </ol>
+    ${tip('Không cần deploy lại: mở lại app sẽ thấy <b>🤖 Claude</b>. Theo dõi chi phí trong mục Usage trên platform.claude.com sau 1–2 tuần.')}
+  </details>` }
+];
+
+/* ---------- Điều khiển ---------- */
+const KEY = 'so-chi-tieu-install-v1';
+let st = { i: 0, done: {}, tests: {} };
+try { st = Object.assign(st, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
+const $ = id => document.getElementById(id);
+
+function render() {
+  const s = STEPS[st.i], n = STEPS.length;
+  $('bar').style.width = ((st.i + 1) / n * 100) + '%';
+  $('count').textContent = 'Bước ' + st.i + ' / ' + (n - 1) + ' · ' + Object.keys(st.done).filter(k => st.done[k]).length + ' bước đã xong';
+  $('step').innerHTML = '<div class="eyebrow">' + (st.i ? 'Bước ' + st.i + ' · ' : '') + s.phase + '</div><h2>' + s.title + '</h2>' + s.html() +
+    (st.i && st.i < n - 1 ? '<label class="check' + (st.done[st.i] ? ' done' : '') + '"><input type="checkbox" id="doneBox"' + (st.done[st.i] ? ' checked' : '') +
+      '><span><b>Tôi đã làm xong bước này</b></span></label>' : '');
+  $('btnBack').disabled = st.i === 0;
+  $('btnNext').textContent = st.i === 0 ? 'Bắt đầu →' : st.i === n - 1 ? 'Xong ✓' : 'Tiếp →';
+  $('btnNext').disabled = st.i === n - 1;
+  const box = $('doneBox');
+  if (box) box.onchange = () => { st.done[st.i] = box.checked; save(); box.closest('.check').classList.toggle('done', box.checked); render(); };
+  document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => copy(b, CLIP[b.dataset.copy]));
+  document.querySelectorAll('[data-test]').forEach(c => {
+    c.checked = !!st.tests[c.dataset.test];
+    c.onchange = () => { st.tests[c.dataset.test] = c.checked; save(); testResult(); };
+  });
+  testResult();
+  window.scrollTo(0, 0);
+}
+function testResult() {
+  const el = $('testResult'); if (!el) return;
+  const n = Object.keys(st.tests).filter(k => st.tests[k]).length;
+  el.innerHTML = n === 8 ? '✅ <b>Đạt cả 8/8.</b> App đã sẵn sàng dùng thật.' : 'Đã đạt ' + n + '/8.';
+}
+function go(i) { st.i = Math.max(0, Math.min(STEPS.length - 1, i)); save(); render(); }
+
+function copy(btn, text) {
+  const done = () => { const t = btn.textContent; btn.textContent = '✓ Đã copy'; btn.classList.add('ok'); setTimeout(() => { btn.textContent = t; btn.classList.remove('ok'); }, 1800); };
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.top = '0'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    if (ok) done(); else { btn.textContent = 'Chọn & copy thủ công'; }
+  };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+}
+
+$('btnBack').onclick = () => go(st.i - 1);
+$('btnNext').onclick = () => go(st.i + 1);
+$('btnToc').onclick = () => {
+  $('tocList').innerHTML = STEPS.map((s, i) => '<button class="item' + (st.done[i] ? ' done' : '') + (i === st.i ? ' cur' : '') + '" data-i="' + i + '"><b>' +
+    (st.done[i] ? '✓' : i) + '</b><span>' + s.title + '<small>' + s.phase + '</small></span></button>').join('');
+  $('tocList').querySelectorAll('button').forEach(b => b.onclick = () => { $('toc').hidden = true; go(+b.dataset.i); });
+  $('toc').hidden = false;
+};
+$('btnTocClose').onclick = () => { $('toc').hidden = true; };
+$('toc').onclick = e => { if (e.target.id === 'toc') $('toc').hidden = true; };
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea')) return;
+  if (e.key === 'ArrowRight') go(st.i + 1);
+  if (e.key === 'ArrowLeft') go(st.i - 1);
+});
+render();
+</script>
+</body>
+</html>

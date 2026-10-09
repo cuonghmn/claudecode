@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bộ tài liệu Sổ chi tiêu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: 1 cột, 2 thẻ lớn theo thứ tự làm (cài trước, dùng sau), phần phụ bên dưới. */
+  :root {
+    --bg: #eef3f2; --card: #ffffff; --text: #15211f; --muted: #566769; --line: #dbe5e4;
+    --brand: #0f766e; --brand-soft: #e3f3f0; --on-brand: #ffffff; --accent: #f59e0b;
+    --font: "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0b1211; --card: #152120; --text: #e4eeec; --muted: #93a6a3; --line: #263533; --brand: #2dd4bf; --brand-soft: #123a36; --on-brand: #062a27; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #0b1211; --card: #152120; --text: #e4eeec; --muted: #93a6a3; --line: #263533; --brand: #2dd4bf; --brand-soft: #123a36; --on-brand: #062a27; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--font); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--brand); }
+  h1 { font-size: 30px; line-height: 1.2; margin: 6px 0 8px; text-wrap: balance; }
+  .lead { color: var(--muted); margin: 0 0 24px; max-width: 60ch; }
+  .docs { display: grid; gap: 14px; }
+  a.doc { display: grid; grid-template-columns: 48px 1fr auto; gap: 16px; align-items: center; text-decoration: none; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; transition: border-color .2s, transform .2s; }
+  a.doc:hover { border-color: var(--brand); transform: translateY(-1px); }
+  a.doc:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .num { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); font-size: 20px; font-weight: 700; }
+  a.doc h2 { font-size: 19px; margin: 0; }
+  a.doc p { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .tags span { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); }
+  .go { font-size: 22px; color: var(--brand); }
+  h3 { font-size: 15px; margin: 32px 0 8px; }
+  ul { margin: 0; padding-left: 20px; color: var(--muted); }
+  ul b { color: var(--text); }
+  code { background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: .9em; }
+  @media (max-width: 520px) { a.doc { grid-template-columns: 40px 1fr; } .go { display: none; } .num { width: 40px; height: 40px; font-size: 17px; } h1 { font-size: 25px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Sổ chi tiêu cá nhân · v1.0</div>
+  <h1>Bộ tài liệu cài đặt và sử dụng</h1>
+  <p class="lead">App ghi chi tiêu hằng tháng chạy trên Google Sheet của bạn, mở trên điện thoại, có AI Gemini miễn phí để hiểu câu ghi tự nhiên và nhận xét cuối tháng.</p>
+
+  <div class="docs">
+    <a class="doc" href="huong-dan-cai-dat.html">
+      <span class="num">1</span>
+      <span><h2>Hướng dẫn cài đặt từng bước</h2>
+        <p>Từ Google Sheet trống đến app trên điện thoại. Mỗi màn một bước, có nút Copy code sẵn.</p>
+        <span class="tags"><span>~30 phút</span><span>14 bước</span><span>Kiểm tra 5 phút</span></span></span>
+      <span class="go">→</span>
+    </a>
+    <a class="doc" href="huong-dan-su-dung.html">
+      <span class="num">2</span>
+      <span><h2>Hướng dẫn sử dụng tự diễn</h2>
+        <p>App thật tự thao tác, có chú thích từng nút. Dừng lại để tự bấm thử bất cứ lúc nào.</p>
+        <span class="tags"><span>7 luồng</span><span>~6 phút xem hết</span><span>Dữ liệu mẫu</span></span></span>
+      <span class="go">→</span>
+    </a>
+  </div>
+
+  <h3>Nên làm theo thứ tự</h3>
+  <ul>
+    <li><b>Xem hướng dẫn sử dụng</b> trước 5 phút để biết app làm được gì.</li>
+    <li><b>Cài đặt</b> theo hướng dẫn 1, chạy phần kiểm tra 5 phút ở cuối.</li>
+    <li><b>Dùng thật 2 tuần</b>, sau đó gửi mẫu báo cáo (có trong bước 13) cho Claude.</li>
+  </ul>
+
+  <h3>Trong thư mục code</h3>
+  <ul>
+    <li><code>Code.gs</code>, <code>Index.html</code>, <code>appsscript.json</code>: 3 file của app (đã nhúng sẵn trong hướng dẫn cài đặt).</li>
+    <li><code>README.md</code>: mô tả kỹ thuật, cấu trúc dữ liệu, các thuộc tính cài đặt.</li>
+    <li><code>docs/</code>: bộ tài liệu này. Tạo lại bằng <code>node expense-tracker/mockup/build.js &amp;&amp; node expense-tracker/docs/build.js</code>.</li>
+  </ul>
+</div>
+</body>
+</html>
