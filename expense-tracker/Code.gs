@@ -204,12 +204,25 @@ function getTransactions(month, category, query) {
   return sortTx_(list);
 }
 
-function getRecent(limit) {
-  const all = sortTx_(readTx_());
+/**
+ * Khoản chi gần đây theo khoảng thời gian (tính cả hôm nay):
+ * '3d' = 3 ngày, '5d' = 5 ngày, 'week' = từ thứ 2 tuần này, 'month' = từ ngày 1 tháng này.
+ */
+function getRecent(range) {
   const today = todayStr_();
+  let start;
+  if (range === '5d') start = addDays_(today, -4);
+  else if (range === 'week') start = addDays_(today, -((toDate_(today).getDay() + 6) % 7));
+  else if (range === 'month') start = today.slice(0, 7) + '-01';
+  else { range = '3d'; start = addDays_(today, -2); }
+  const all = readTx_();
+  const items = sortTx_(all.filter(t => t.date >= start && t.date <= today));
   return {
+    range: range,
+    start: start,
     todayTotal: all.filter(t => t.date === today).reduce((s, t) => s + t.amount, 0),
-    items: all.slice(0, limit || 6)
+    total: items.reduce((s, t) => s + t.amount, 0),
+    items: items
   };
 }
 

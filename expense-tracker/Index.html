@@ -73,7 +73,12 @@
   .tx .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--bg); display: grid; place-items: center; flex: none; }
   .tx .amt { font-weight: 700; white-space: nowrap; }
   .day-h { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted);
-    margin: 14px 0 2px; text-transform: uppercase; letter-spacing: .03em; }
+    margin: 14px 0 2px; }
+  .day-h span:first-child { text-transform: uppercase; letter-spacing: .03em; }
+  .range { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 8px; }
+  .range button { padding: 7px 4px; font-size: 13px; font-weight: 500; white-space: nowrap; background: var(--bg);
+    color: var(--muted); border: 1px solid var(--line); border-radius: 999px; }
+  .range button.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); font-weight: 600; }
 
   .preview { border: 1px dashed var(--line); border-radius: 12px; padding: 10px; margin-top: 10px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -127,6 +132,13 @@
     </div>
     <div class="card">
       <div class="row"><h2 class="grow" style="margin:0">Gần đây</h2><span class="muted">Hôm nay: <b id="todayTotal" class="num">—</b></span></div>
+      <div class="range" id="recentRange">
+        <button data-r="3d" class="on" onclick="setRange('3d')">3 ngày</button>
+        <button data-r="5d" onclick="setRange('5d')">5 ngày</button>
+        <button data-r="week" onclick="setRange('week')">Tuần này</button>
+        <button data-r="month" onclick="setRange('month')">Tháng này</button>
+      </div>
+      <div class="muted" id="recentSummary"></div>
       <div id="recent"></div>
     </div>
   </section>
@@ -286,20 +298,40 @@ async function savePreview() {
   } catch (e) { fail(e); } finally { busy(btn, false); updPreviewTotal(); }
 }
 
+const RANGE_LABEL = { '3d': '3 ngày qua', '5d': '5 ngày qua', week: 'Tuần này', month: 'Tháng này' };
+let recentRange = '3d';
+function setRange(r) {
+  recentRange = r;
+  $('recentRange').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.r === r));
+  loadRecent();
+}
+
 async function loadRecent() {
   try {
-    const r = await api('getRecent', 6);
+    const r = await api('getRecent', recentRange);
+    if (r.range !== recentRange) return; // bỏ kết quả cũ nếu người dùng đã chọn khoảng khác
     $('todayTotal').textContent = vnd(r.todayTotal);
-    $('recent').innerHTML = r.items.length ? r.items.map(txRow).join('') : '<div class="empty">Chưa có khoản nào. Ghi khoản đầu tiên ở trên nhé.</div>';
+    const from = r.start.slice(8) + '/' + r.start.slice(5, 7);
+    $('recentSummary').innerHTML = RANGE_LABEL[r.range] + ' (từ ' + from + '): ' + r.items.length + ' khoản · <b class="num">' + vnd(r.total) + '</b>';
+    $('recent').innerHTML = r.items.length ? groupByDay(r.items)
+      : '<div class="empty">Không có khoản nào trong ' + RANGE_LABEL[r.range].toLowerCase() + '. Ghi khoản đầu tiên ở trên nhé.</div>';
     bindTx($('recent'), r.items);
   } catch (e) { fail(e); }
 }
 
-function txRow(t) {
+/** Danh sách đã sắp xếp mới → cũ, gom theo ngày, mỗi ngày có tổng tiền. */
+function groupByDay(list) {
+  const groups = {}; list.forEach(t => (groups[t.date] = groups[t.date] || []).push(t));
+  return Object.keys(groups).map(d =>
+    `<div class="day-h"><span>${dLabel(d)} · ${groups[d].length} khoản</span><span class="num">${vnd(groups[d].reduce((s, t) => s + t.amount, 0))}</span></div>` +
+    groups[d].map(t => txRow(t, true)).join('')).join('');
+}
+
+function txRow(t, hideDate) {
   return `<div class="tx" data-id="${esc(t.id)}">
     <div class="ic">${icon(t.category)}</div>
     <div class="grow"><div>${esc(t.description || t.category)}</div>
-      <div class="muted">${esc(t.category)} · ${dLabel(t.date)} · ${esc(t.method)}</div></div>
+      <div class="muted">${esc(t.category)}${hideDate ? '' : ' · ' + dLabel(t.date)} · ${esc(t.method)}</div></div>
     <div class="amt num">${vnd(t.amount)}</div></div>`;
 }
 function bindTx(container, list) {
@@ -457,10 +489,7 @@ async function loadHistory() {
     const total = list.reduce((s, t) => s + t.amount, 0);
     $('hSummary').innerHTML = list.length + ' khoản · <b class="num">' + vnd(total) + '</b>';
     if (!list.length) { $('hist').innerHTML = '<div class="empty">Không có giao dịch phù hợp</div>'; return; }
-    const groups = {}; list.forEach(t => (groups[t.date] = groups[t.date] || []).push(t));
-    $('hist').innerHTML = Object.keys(groups).map(d =>
-      `<div class="day-h"><span>${dLabel(d)}</span><span class="num">${vnd(groups[d].reduce((s, t) => s + t.amount, 0))}</span></div>` +
-      groups[d].map(txRow).join('')).join('');
+    $('hist').innerHTML = groupByDay(list);
     bindTx($('hist'), list);
   } catch (e) { fail(e); }
 }
