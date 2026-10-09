@@ -168,6 +168,8 @@ const CHAPTERS = [
     { t: cardWith('Để dành'), a: 'show', text: 'Để dành (tiết kiệm, đầu tư) theo dõi riêng so với mục tiêu, không tính vào chi tiêu' },
     { t: doc => [...doc.querySelectorAll('#dash .card')].find(c => c.textContent.includes('Với tốc độ hiện tại')) || cardWith('Theo danh mục')(doc),
       a: 'show', text: 'Cảnh báo sớm khi dự báo cuối tháng vượt ngân sách' },
+    { t: cardWith('Cơ cấu chi tiêu'), a: 'show', text: 'Biểu đồ tròn: tổng chi tháng chia theo danh mục. Chạm vào một phần để xem số tiền' },
+    { t: doc => doc.querySelector('#donutLegend button'), a: 'click', text: 'Ví dụ: chạm danh mục chi nhiều nhất, giữa vòng hiện số tiền và %', wait: 600 },
     { t: cardWith('Theo danh mục'), a: 'show', text: 'Từng danh mục so với hạn mức: xanh là ổn, cam là sắp chạm, đỏ là đã vượt' },
     { t: '#btnReview', a: 'click', text: 'Nhận xét tháng. Khi bật Gemini sẽ có phân tích và 3 hành động cụ thể', until: '#review h3' },
     { t: '#review', a: 'show', text: 'Kết quả nhận xét hiện ngay bên dưới' }
