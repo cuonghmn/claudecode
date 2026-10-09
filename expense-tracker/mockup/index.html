@@ -1076,6 +1076,23 @@ window.google = { script: { get run() {
 </nav>
 
 <div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()"><div class="sheet" id="modalBody"></div></div>
+<div id="qaModal" class="modal hidden" style="z-index:15" onclick="if(event.target===this)cancelQuickCat()">
+  <div class="sheet">
+    <h2>Thêm danh mục mới</h2>
+    <label for="qaName">Tên danh mục</label>
+    <input id="qaName" maxlength="40" placeholder="Ví dụ: Thú cưng" onkeydown="if(event.key==='Enter')saveQuickCat()">
+    <label>Icon</label>
+    <div class="row" style="align-items:flex-start">
+      <input id="qaIcon" value="📌" style="max-width:64px;text-align:center;font-size:20px" maxlength="8" aria-label="Icon">
+      <div class="icon-pick grow" id="qaIcons"></div>
+    </div>
+    <div class="muted" style="margin-top:8px">Danh mục mới chưa có ngân sách. Bạn có thể đặt ngân sách sau ở tab Ngân sách.</div>
+    <div class="row" style="margin-top:14px"><span class="grow"></span>
+      <button class="ghost" onclick="cancelQuickCat()">Hủy</button>
+      <button class="primary" id="btnQa" onclick="saveQuickCat()">Thêm &amp; chọn</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ===== Bảng góp ý mockup ===== */
@@ -1166,6 +1183,11 @@ function busy(btn, on, label) {
   else { btn.innerHTML = btn.dataset.l; btn.disabled = false; }
 }
 function fail(e) { toast('Lỗi: ' + (e && e.message || e), 4500); }
+/** withNew: thêm lựa chọn "＋ Thêm danh mục mới…" cuối danh sách (dùng ở màn ghi). */
+function catSelect(sel, attrs) {
+  return '<select class="cat-sel" ' + (attrs || '') + ' data-prev="' + esc(sel) + '" onchange="catChanged(this)">' +
+    catOptions(sel) + '<option value="__new__">＋ Thêm danh mục mới…</option></select>';
+}
 function catOptions(sel) {
   return S.init.categories.map(c => '<option' + (c.name === sel ? ' selected' : '') + ' value="' + esc(c.name) + '">' + c.icon + ' ' + esc(c.name) + '</option>').join('');
 }
@@ -1217,7 +1239,7 @@ function renderPreview() {
       <div class="grid2" style="margin-top:8px">
         <input class="num" inputmode="numeric" value="${it.amount.toLocaleString('vi-VN')}" onblur="fmtInput(this)" oninput="S.preview[${i}].amount=digits(this.value);updPreviewTotal()">
         <input type="date" value="${it.date}" onchange="S.preview[${i}].date=this.value">
-        <select onchange="S.preview[${i}].category=this.value">${catOptions(it.category)}</select>
+        ${catSelect(it.category, 'data-pi="' + i + '" aria-label="Danh mục"')}
         <select onchange="S.preview[${i}].method=this.value">${methodOptions(it.method)}</select>
       </div>
     </div>`).join('');
@@ -1287,7 +1309,7 @@ function txForm(t) {
     <div class="grid2" style="margin-top:8px">
       <div><label>Số tiền (đ)</label><input id="fAmt" class="num" inputmode="numeric" value="${t.amount ? t.amount.toLocaleString('vi-VN') : ''}" onblur="fmtInput(this)"></div>
       <div><label>Ngày</label><input id="fDate" type="date" value="${t.date || S.init.today}"></div>
-      <div><label>Danh mục</label><select id="fCat">${catOptions(t.category || 'Ăn uống')}</select></div>
+      <div><label for="fCat">Danh mục</label>${catSelect(t.category || 'Ăn uống', 'id="fCat"')}</div>
       <div><label>Phương thức</label><select id="fMethod">${methodOptions(t.method || S.init.defaultMethod)}</select></div>
     </div>
     <label>Ghi chú</label><input id="fNote" value="${esc(t.note || '')}">`;
@@ -1466,6 +1488,42 @@ async function loadHistory() {
     $('hist').innerHTML = groupByDay(list);
     bindTx($('hist'), list);
   } catch (e) { fail(e); }
+}
+
+/* ---------------- Thêm nhanh danh mục khi đang ghi ---------------- */
+let qaTarget = null;
+function catChanged(el) {
+  if (el.value === '__new__') { openQuickCat(el); return; }
+  el.dataset.prev = el.value;
+  if (el.dataset.pi != null) S.preview[+el.dataset.pi].category = el.value;
+}
+function openQuickCat(el) {
+  qaTarget = el;
+  $('qaName').value = ''; $('qaIcon').value = '📌';
+  $('qaIcons').innerHTML = ICONS.map(x => `<button type="button" onclick="$('qaIcon').value='${x}'">${x}</button>`).join('');
+  $('qaModal').classList.remove('hidden');
+  setTimeout(() => $('qaName').focus(), 50);
+}
+function cancelQuickCat() {
+  if (qaTarget) qaTarget.value = qaTarget.dataset.prev || '';
+  qaTarget = null; $('qaModal').classList.add('hidden');
+}
+async function saveQuickCat() {
+  const name = $('qaName').value.trim();
+  if (!name) { toast('Hãy nhập tên danh mục'); $('qaName').focus(); return; }
+  const btn = $('btnQa'); busy(btn, true);
+  try {
+    const r = await api('saveCategory', { name: name, icon: $('qaIcon').value, budget: 0, keywords: '' });
+    await refreshInit();
+    // Cập nhật mọi ô chọn danh mục đang mở, giữ nguyên lựa chọn cũ; ô vừa bấm chọn danh mục mới
+    document.querySelectorAll('select.cat-sel').forEach(sel => {
+      const v = sel === qaTarget ? r.name : (sel.dataset.prev || sel.value);
+      sel.innerHTML = catOptions(v) + '<option value="__new__">＋ Thêm danh mục mới…</option>';
+      sel.value = v; catChanged(sel);
+    });
+    qaTarget = null; $('qaModal').classList.add('hidden');
+    toast('Đã thêm "' + r.name + '" ✓');
+  } catch (e) { fail(e); } finally { busy(btn, false); }
 }
 
 /* ---------------- Ngân sách & danh mục ---------------- */
