@@ -273,6 +273,26 @@ function offBudget_(byCatMap) {
   return { total: cats.reduce((s, c) => s + c.amount, 0), categories: cats.map(c => ({ name: c.name, amount: c.amount })) };
 }
 
+/**
+ * Tổng CHI (không gồm để dành) của từng tháng, từ tháng cũ nhất có dữ liệu (ít nhất 6 tháng gần nhất,
+ * tối đa 24 tháng) đến tháng hiện tại. Dùng cho dải chọn tháng.
+ */
+function monthTotals_(allTx, isSave, today) {
+  const cur = today.slice(0, 7);
+  let start = cur;
+  for (let i = 0; i < 5; i++) start = prevMonth_(start);
+  allTx.forEach(t => { const ym = t.date.slice(0, 7); if (ym < start) start = ym; });
+  const sums = {};
+  allTx.forEach(t => { if (!isSave[t.category]) { const ym = t.date.slice(0, 7); sums[ym] = (sums[ym] || 0) + t.amount; } });
+  const list = [];
+  for (let ym = cur, i = 0; i < 24 && ym >= start; i++, ym = prevMonth_(ym)) list.unshift({ ym: ym, spend: sums[ym] || 0 });
+  return list;
+}
+
+function getMonthTotals() {
+  return monthTotals_(readTx_(), saveNames_(getCategories_()), todayStr_());
+}
+
 /** Tên các danh mục loại "Để dành". */
 function saveNames_(cats) {
   const m = {}; cats.forEach(c => { if (c.kind === 'save') m[c.name] = true; }); return m;
@@ -349,7 +369,8 @@ function getDashboard(month) {
     bigItems: { count: big.length, total: big.reduce((s, t) => s + t.amount, 0), threshold: BIG_ITEM_THRESHOLD },
     top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
     offBudget: offBudget_(byCatMap),
-    savings: savings
+    savings: savings,
+    months: monthTotals_(allTx, isSave, today)
   };
 }
 
@@ -828,7 +849,11 @@ function localReview_(d) {
 
 function seedDemoData() {
   const today = todayStr_();
-  const cur = today.slice(0, 7), prev = prevMonth_(cur);
+  const cur = today.slice(0, 7);
+  // 6 tháng: 5 tháng trước (đủ ngày) + tháng này (đến hôm nay), mỗi tháng mức chi hơi khác nhau
+  const months = [cur];
+  for (let i = 0; i < 5; i++) months.unshift(prevMonth_(months[0]));
+  const factors = [0.92, 1.08, 0.97, 1.15, 1.03, 1];
   const samples = [
     ['Ăn uống', 'Phở bò', 55000], ['Ăn uống', 'Cà phê Highlands', 49000], ['Ăn uống', 'Cơm trưa văn phòng', 45000],
     ['Ăn uống', 'Đi siêu thị WinMart', 650000], ['Ăn uống', 'Trà sữa', 38000], ['Ăn uống', 'Lẩu cuối tuần', 420000],
@@ -837,18 +862,20 @@ function seedDemoData() {
     ['Sức khỏe', 'Thuốc cảm', 120000], ['Học tập', 'Sách PMP', 350000], ['Gia đình & Hiếu hỉ', 'Mừng đám cưới', 1000000]
   ];
   const rows = [], now = new Date();
-  [[prev, daysInMonth_(prev)], [cur, Number(today.slice(8, 10))]].forEach(([ym, lastDay]) => {
+  months.forEach((ym, mi) => {
+    const lastDay = ym === cur ? Number(today.slice(8, 10)) : daysInMonth_(ym);
+    const f = factors[mi];
     const add = (day, cat, desc, amt, method) =>
       rows.push([Utilities.getUuid().slice(0, 8), toDate_(ym + '-' + ('0' + day).slice(-2)), amt, cat, desc, method, 'DEMO', now]);
     add(1, 'Nhà ở & Hóa đơn', 'Tiền thuê nhà', 5000000, 'Chuyển khoản');
     if (lastDay >= 5) add(5, 'Nhà ở & Hóa đơn', 'Tiền điện', 780000, 'Chuyển khoản');
     add(Math.min(lastDay, 10), 'Tiết kiệm & Đầu tư', 'Gửi tiết kiệm', 3000000, 'Chuyển khoản');
     for (let d = 1; d <= lastDay; d++) {
-      const k = 1 + (d * 7) % 3;
+      const k = 1 + ((d + mi) * 7) % 3;
       for (let j = 0; j < k; j++) {
-        const s = samples[(d * 5 + j * 3) % samples.length];
-        if (s[2] >= 1000000 && d % 9) continue;
-        add(d, s[0], s[1], Math.round(s[2] * (0.85 + ((d + j) % 4) * 0.1) / 1000) * 1000, ['Thẻ', 'Ví điện tử', 'Tiền mặt', 'Chuyển khoản'][(d + j) % 4]);
+        const s = samples[((d + mi) * 5 + j * 3) % samples.length];
+        if (s[2] >= 1000000 && (d + mi) % 9) continue;
+        add(d, s[0], s[1], Math.round(s[2] * f * (0.85 + ((d + j) % 4) * 0.1) / 1000) * 1000, ['Thẻ', 'Ví điện tử', 'Tiền mặt', 'Chuyển khoản'][(d + j) % 4]);
       }
     }
   });

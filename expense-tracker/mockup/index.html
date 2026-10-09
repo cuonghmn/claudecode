@@ -56,8 +56,6 @@
   .title-row { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px; }
   .title-row h1 { margin: 0; flex: 1; }
   .engine { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
-  .month-btn { background: transparent; color: var(--text); font-size: 17px; font-weight: 700; padding: 6px 10px; }
-  .month-btn::after { content: " ▾"; font-size: 12px; color: var(--muted); }
   .mp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
   .mp-grid button { background: var(--bg); color: var(--text); font-weight: 500; }
   .mp-grid button.on { background: var(--brand); color: var(--on-brand); }
@@ -103,8 +101,22 @@
   nav button.active { color: var(--brand); }
   nav button.active svg { stroke-width: 2.4; }
 
-  .month-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .month-nav strong { font-size: 17px; }
+  /* Dải chọn tháng: vuốt ngang, mỗi tháng có tổng chi + thanh mini để so sánh nhanh */
+  .mstrip-wrap { display: flex; gap: 6px; align-items: stretch; margin-bottom: 12px; }
+  .mstrip { position: relative; display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0;
+    scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .mstrip::-webkit-scrollbar { display: none; }
+  .mchip { flex: none; min-width: 66px; min-height: 60px; display: flex; flex-direction: column; align-items: stretch; justify-content: center;
+    gap: 2px; background: var(--card); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 6px 8px;
+    font-weight: 600; font-size: 13px; text-align: center; scroll-snap-align: center; }
+  .mchip small { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .mbar { display: block; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .mbar i { display: block; height: 100%; background: var(--muted); }
+  .mchip.on { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+  .mchip.on small { color: var(--on-brand); opacity: .85; }
+  .mchip.on .mbar { background: color-mix(in srgb, var(--on-brand) 30%, transparent); }
+  .mchip.on .mbar i { background: var(--on-brand); }
+  .mcal { flex: none; min-width: 48px; display: grid; place-items: center; background: var(--card); border: 1px solid var(--line); color: var(--muted); padding: 0; }
   .chart { width: 100%; height: 120px; display: block; }
   .review h3 { font-size: 14px; margin: 12px 0 4px; } .review h3:first-child { margin-top: 0; }
   .review ul { margin: 4px 0; padding-left: 18px; } .review p { margin: 4px 0; }
@@ -483,6 +495,26 @@ function offBudget_(byCatMap) {
   return { total: cats.reduce((s, c) => s + c.amount, 0), categories: cats.map(c => ({ name: c.name, amount: c.amount })) };
 }
 
+/**
+ * Tổng CHI (không gồm để dành) của từng tháng, từ tháng cũ nhất có dữ liệu (ít nhất 6 tháng gần nhất,
+ * tối đa 24 tháng) đến tháng hiện tại. Dùng cho dải chọn tháng.
+ */
+function monthTotals_(allTx, isSave, today) {
+  const cur = today.slice(0, 7);
+  let start = cur;
+  for (let i = 0; i < 5; i++) start = prevMonth_(start);
+  allTx.forEach(t => { const ym = t.date.slice(0, 7); if (ym < start) start = ym; });
+  const sums = {};
+  allTx.forEach(t => { if (!isSave[t.category]) { const ym = t.date.slice(0, 7); sums[ym] = (sums[ym] || 0) + t.amount; } });
+  const list = [];
+  for (let ym = cur, i = 0; i < 24 && ym >= start; i++, ym = prevMonth_(ym)) list.unshift({ ym: ym, spend: sums[ym] || 0 });
+  return list;
+}
+
+function getMonthTotals() {
+  return monthTotals_(readTx_(), saveNames_(getCategories_()), todayStr_());
+}
+
 /** Tên các danh mục loại "Để dành". */
 function saveNames_(cats) {
   const m = {}; cats.forEach(c => { if (c.kind === 'save') m[c.name] = true; }); return m;
@@ -559,7 +591,8 @@ function getDashboard(month) {
     bigItems: { count: big.length, total: big.reduce((s, t) => s + t.amount, 0), threshold: BIG_ITEM_THRESHOLD },
     top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
     offBudget: offBudget_(byCatMap),
-    savings: savings
+    savings: savings,
+    months: monthTotals_(allTx, isSave, today)
   };
 }
 
@@ -1038,7 +1071,11 @@ function localReview_(d) {
 
 function seedDemoData() {
   const today = todayStr_();
-  const cur = today.slice(0, 7), prev = prevMonth_(cur);
+  const cur = today.slice(0, 7);
+  // 6 tháng: 5 tháng trước (đủ ngày) + tháng này (đến hôm nay), mỗi tháng mức chi hơi khác nhau
+  const months = [cur];
+  for (let i = 0; i < 5; i++) months.unshift(prevMonth_(months[0]));
+  const factors = [0.92, 1.08, 0.97, 1.15, 1.03, 1];
   const samples = [
     ['Ăn uống', 'Phở bò', 55000], ['Ăn uống', 'Cà phê Highlands', 49000], ['Ăn uống', 'Cơm trưa văn phòng', 45000],
     ['Ăn uống', 'Đi siêu thị WinMart', 650000], ['Ăn uống', 'Trà sữa', 38000], ['Ăn uống', 'Lẩu cuối tuần', 420000],
@@ -1047,18 +1084,20 @@ function seedDemoData() {
     ['Sức khỏe', 'Thuốc cảm', 120000], ['Học tập', 'Sách PMP', 350000], ['Gia đình & Hiếu hỉ', 'Mừng đám cưới', 1000000]
   ];
   const rows = [], now = new Date();
-  [[prev, daysInMonth_(prev)], [cur, Number(today.slice(8, 10))]].forEach(([ym, lastDay]) => {
+  months.forEach((ym, mi) => {
+    const lastDay = ym === cur ? Number(today.slice(8, 10)) : daysInMonth_(ym);
+    const f = factors[mi];
     const add = (day, cat, desc, amt, method) =>
       rows.push([Utilities.getUuid().slice(0, 8), toDate_(ym + '-' + ('0' + day).slice(-2)), amt, cat, desc, method, 'DEMO', now]);
     add(1, 'Nhà ở & Hóa đơn', 'Tiền thuê nhà', 5000000, 'Chuyển khoản');
     if (lastDay >= 5) add(5, 'Nhà ở & Hóa đơn', 'Tiền điện', 780000, 'Chuyển khoản');
     add(Math.min(lastDay, 10), 'Tiết kiệm & Đầu tư', 'Gửi tiết kiệm', 3000000, 'Chuyển khoản');
     for (let d = 1; d <= lastDay; d++) {
-      const k = 1 + (d * 7) % 3;
+      const k = 1 + ((d + mi) * 7) % 3;
       for (let j = 0; j < k; j++) {
-        const s = samples[(d * 5 + j * 3) % samples.length];
-        if (s[2] >= 1000000 && d % 9) continue;
-        add(d, s[0], s[1], Math.round(s[2] * (0.85 + ((d + j) % 4) * 0.1) / 1000) * 1000, ['Thẻ', 'Ví điện tử', 'Tiền mặt', 'Chuyển khoản'][(d + j) % 4]);
+        const s = samples[((d + mi) * 5 + j * 3) % samples.length];
+        if (s[2] >= 1000000 && (d + mi) % 9) continue;
+        add(d, s[0], s[1], Math.round(s[2] * f * (0.85 + ((d + j) % 4) * 0.1) / 1000) * 1000, ['Thẻ', 'Ví điện tử', 'Tiền mặt', 'Chuyển khoản'][(d + j) % 4]);
       }
     }
   });
@@ -1089,7 +1128,7 @@ function removeDemoData() {
     setup(); seedDemoData(); persist();
   }
   if (!restore()) reset(); else setup(); // setup an toàn khi chạy lại: nâng cấp dữ liệu cũ (vd thêm cột Loại)
-  return { getInitData, getTransactions, getRecent, getDashboard, addTransactions, updateTransaction, deleteTransaction, deleteTransactions, saveBudgets, getCategoryList, saveCategory, deleteCategory, parseInput, monthlyReview, reset };
+  return { getInitData, getTransactions, getRecent, getDashboard, getMonthTotals, addTransactions, updateTransaction, deleteTransaction, deleteTransactions, saveBudgets, getCategoryList, saveCategory, deleteCategory, parseInput, monthlyReview, reset };
 })();
 
 window.google = { script: { get run() {
@@ -1149,10 +1188,10 @@ window.google = { script: { get run() {
 
   <!-- ============ TAB: TỔNG QUAN ============ -->
   <section id="tab-dash" class="hidden">
-    <div class="month-nav">
-      <button class="ghost" onclick="shiftMonth(-1)">‹ Trước</button>
-      <button class="month-btn" id="dashMonth" onclick="pickMonth(S.dashMonth, ym => { S.dashMonth = ym; loadDash(); })"></button>
-      <button class="ghost" onclick="shiftMonth(1)">Sau ›</button>
+    <div class="title-row"><h1>Tổng quan</h1><span class="muted" id="dashMonth"></span></div>
+    <div class="mstrip-wrap">
+      <div class="mstrip" id="dashStrip" role="tablist" aria-label="Chọn tháng"></div>
+      <button class="mcal" aria-label="Chọn tháng khác" onclick="pickMonth(S.dashMonth, pickDashMonth)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></button>
     </div>
     <div id="dash"></div>
   </section>
@@ -1165,11 +1204,10 @@ window.google = { script: { get run() {
         <button data-m="month" class="on" onclick="setHistMode('month')">Theo tháng</button>
         <button data-m="range" onclick="setHistMode('range')">Từ ngày → đến ngày</button>
       </div>
-      <div class="row" id="hMonthBox">
-        <button class="ghost" onclick="shiftHistMonth(-1)" aria-label="Tháng trước">‹ Trước</button>
-        <input type="hidden" id="hMonth">
-        <button class="month-btn grow" id="hMonthLabel" onclick="pickMonth($('hMonth').value, ym => { $('hMonth').value = ym; loadHistory(); })"></button>
-        <button class="ghost" onclick="shiftHistMonth(1)" aria-label="Tháng sau">Sau ›</button>
+      <input type="hidden" id="hMonth">
+      <div class="mstrip-wrap" id="hMonthBox" style="margin:0">
+        <div class="mstrip" id="histStrip" role="tablist" aria-label="Chọn tháng"></div>
+        <button class="mcal" aria-label="Chọn tháng khác" onclick="pickMonth($('hMonth').value, pickHistMonth)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></button>
       </div>
       <div class="grid2 hidden" id="hRangeBox">
         <div><label for="hFrom">Từ ngày</label><input type="date" id="hFrom" onchange="loadHistory()"></div>
@@ -1364,6 +1402,7 @@ function prefetch() {
   prefetch.t = setTimeout(() => {
     const ym = S.init.today.slice(0, 7);
     if (!CACHE['dash|' + ym]) api('getDashboard', ym).then(d => { CACHE['dash|' + ym] = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
+    if (!CACHE.months) api('getMonthTotals').then(d => { CACHE.months = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
     if (!CACHE.cats) api('getCategoryList').then(d => { CACHE.cats = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
   }, 1500); // chờ màn hiện tại tải xong rồi mới tải trước ở nền
 }
@@ -1569,12 +1608,35 @@ function refreshCurrent() {
 }
 
 /* ---------------- Tổng quan ---------------- */
-function shiftMonth(n) {
-  const p = S.dashMonth.split('-').map(Number);
-  const d = new Date(p[0], p[1] - 1 + n, 1);
-  S.dashMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-  loadDash();
+/**
+ * Dải tháng: mỗi ô = tên tháng + tổng chi + thanh mini (so với tháng chi nhiều nhất).
+ * Bấm là chọn ngay (tô màu trước, tải dữ liệu sau) và tự cuộn để ô đang chọn nằm giữa.
+ */
+function renderStrip(id, months, sel, pick) {
+  S.pick = S.pick || {}; S.pick[id] = pick;
+  const strip = $(id), cur = S.init.today.slice(0, 7);
+  const max = Math.max.apply(null, months.map(m => m.spend).concat([1]));
+  strip.innerHTML = months.map((m, i) => {
+    const mo = +m.ym.slice(5), yy = m.ym.slice(2, 4);
+    const label = m.ym === cur ? 'Tháng này' : 'T' + mo + (mo === 1 || i === 0 ? "/" + yy : '');
+    return `<button type="button" role="tab" class="mchip${m.ym === sel ? ' on' : ''}" aria-selected="${m.ym === sel}" data-ym="${m.ym}"
+      aria-label="${ymLabel(m.ym)}: chi ${vnd(m.spend)}" onclick="stripPick('${id}', '${m.ym}')">
+      <span>${label}</span><small class="num">${m.spend ? short(m.spend) : '—'}</small>
+      <span class="mbar"><i style="width:${Math.round(m.spend / max * 100)}%"></i></span></button>`;
+  }).join('');
+  centerStrip(id);
 }
+function centerStrip(id) {
+  const strip = $(id), on = strip.querySelector('.on');
+  strip.scrollLeft = on ? on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2 : strip.scrollWidth;
+}
+function stripPick(id, ym) {
+  $(id).querySelectorAll('.mchip').forEach(b => { b.classList.toggle('on', b.dataset.ym === ym); b.setAttribute('aria-selected', b.dataset.ym === ym); });
+  centerStrip(id);
+  S.pick[id](ym);
+}
+function pickDashMonth(ym) { S.dashMonth = ym; loadDash(); }
+function pickHistMonth(ym) { $('hMonth').value = ym; loadHistory(); }
 
 async function loadDash() {
   const ym = S.dashMonth;
@@ -1584,6 +1646,12 @@ async function loadDash() {
 }
 
 function renderDash(d) {
+  if (d.months) renderStrip('dashStrip', d.months, d.month, pickDashMonth);
+  if (!d.count && !(d.savings && d.savings.total)) {
+    $('dash').innerHTML = `<div class="card empty">${ymLabel(d.month)} chưa có khoản chi nào.<br>
+      <button style="margin-top:10px" onclick="go('add')">Ghi khoản chi</button></div>`;
+    return;
+  }
   const pctBudget = d.budget ? d.total / d.budget * 100 : 0;
   const delta = d.prevSamePeriod ? (d.total - d.prevSamePeriod) / d.prevSamePeriod * 100 : null;
   const fullMonth = d.daysElapsed >= d.daysInMonth;
@@ -1697,12 +1765,6 @@ function setHistMode(m) {
   }
   loadHistory();
 }
-function shiftHistMonth(n) {
-  const p = ($('hMonth').value || S.init.today.slice(0, 7)).split('-').map(Number);
-  const d = new Date(p[0], p[1] - 1 + n, 1);
-  $('hMonth').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-  loadHistory();
-}
 /** Bộ chọn tháng: lưới 12 tháng + chuyển năm. Không cho chọn tháng tương lai. */
 function pickMonth(cur, onPick) {
   cur = cur || S.init.today.slice(0, 7);
@@ -1729,7 +1791,9 @@ const dmy = ymd => ymd.slice(8) + '/' + ymd.slice(5, 7) + '/' + ymd.slice(0, 4);
 
 async function loadHistory() {
   const req = ++histReq;
-  $('hMonthLabel').textContent = ymLabel($('hMonth').value || S.init.today.slice(0, 7));
+  if (histMode === 'month') {
+    cachedCall('months', 'getMonthTotals', [], m => renderStrip('histStrip', m, $('hMonth').value, pickHistMonth)).catch(fail);
+  }
   try {
     let from = '', to = '', period;
     if (histMode === 'range') {

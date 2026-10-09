@@ -18,7 +18,7 @@ const fontLink = index.match(/<link[^>]+fonts\.googleapis[^>]+>/)[0];
 const style = between(index, '<style>', '</style>');
 const body = between(index, '<body>', '</body>');
 
-const API = ['getInitData', 'getTransactions', 'getRecent', 'getDashboard', 'addTransactions',
+const API = ['getInitData', 'getTransactions', 'getRecent', 'getDashboard', 'getMonthTotals', 'addTransactions',
   'updateTransaction', 'deleteTransaction', 'deleteTransactions', 'saveBudgets', 'getCategoryList', 'saveCategory', 'deleteCategory', 'parseInput', 'monthlyReview'];
 
 const mockStyle = `
