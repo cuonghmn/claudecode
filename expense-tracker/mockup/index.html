@@ -105,6 +105,8 @@
   .mstrip-wrap { display: flex; gap: 6px; align-items: stretch; margin-bottom: 12px; }
   .mstrip { position: relative; display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0;
     scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  /* Mờ mép trái chỉ khi còn tháng bị ẩn bên trái: gợi ý "vuốt để xem thêm" */
+  .mstrip.more { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px); mask-image: linear-gradient(to right, transparent 0, #000 18px); }
   .mstrip::-webkit-scrollbar { display: none; }
   .mchip { flex: none; min-width: 66px; min-height: 60px; display: flex; flex-direction: column; align-items: stretch; justify-content: center;
     gap: 2px; background: var(--card); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 6px 8px;
@@ -116,6 +118,9 @@
   .mchip.on small { color: var(--on-brand); opacity: .85; }
   .mchip.on .mbar { background: color-mix(in srgb, var(--on-brand) 30%, transparent); }
   .mchip.on .mbar i { background: var(--on-brand); }
+  /* Tháng đang diễn ra: thanh nét đứt vì số liệu chưa đủ tháng */
+  .mchip.now .mbar i { background: repeating-linear-gradient(90deg, var(--muted) 0 4px, transparent 4px 7px); }
+  .mchip.now.on .mbar i { background: repeating-linear-gradient(90deg, var(--on-brand) 0 4px, transparent 4px 7px); }
   .mcal { flex: none; min-width: 48px; display: grid; place-items: center; background: var(--card); border: 1px solid var(--line); color: var(--muted); padding: 0; }
   .chart { width: 100%; height: 120px; display: block; }
   .review h3 { font-size: 14px; margin: 12px 0 4px; } .review h3:first-child { margin-top: 0; }
@@ -499,20 +504,25 @@ function offBudget_(byCatMap) {
  * Tổng CHI (không gồm để dành) của từng tháng, từ tháng cũ nhất có dữ liệu (ít nhất 6 tháng gần nhất,
  * tối đa 24 tháng) đến tháng hiện tại. Dùng cho dải chọn tháng.
  */
-function monthTotals_(allTx, isSave, today) {
+function monthTotals_(allTx, isSave, today, from) {
   const cur = today.slice(0, 7);
   let start = cur;
-  for (let i = 0; i < 5; i++) start = prevMonth_(start);
+  for (let i = 0; i < 5; i++) start = prevMonth_(start);                  // ít nhất 6 tháng gần nhất
   allTx.forEach(t => { const ym = t.date.slice(0, 7); if (ym < start) start = ym; });
+  let cap = cur;
+  for (let i = 0; i < 23; i++) cap = prevMonth_(cap);
+  if (start < cap) start = cap;                                            // tối đa 24 tháng
+  if (from && /^\d{4}-\d{2}$/.test(from) && from >= '2000-01' && from < start) start = from; // đang xem tháng cũ hơn: kéo dải tới đó
   const sums = {};
   allTx.forEach(t => { if (!isSave[t.category]) { const ym = t.date.slice(0, 7); sums[ym] = (sums[ym] || 0) + t.amount; } });
   const list = [];
-  for (let ym = cur, i = 0; i < 24 && ym >= start; i++, ym = prevMonth_(ym)) list.unshift({ ym: ym, spend: sums[ym] || 0 });
+  for (let ym = cur; ym >= start; ym = prevMonth_(ym)) list.unshift({ ym: ym, spend: sums[ym] || 0 });
   return list;
 }
 
-function getMonthTotals() {
-  return monthTotals_(readTx_(), saveNames_(getCategories_()), todayStr_());
+/** from (tùy chọn, yyyy-MM): bảo đảm dải tháng kéo dài tới tháng này. */
+function getMonthTotals(from) {
+  return monthTotals_(readTx_(), saveNames_(getCategories_()), todayStr_(), from);
 }
 
 /** Tên các danh mục loại "Để dành". */
@@ -592,7 +602,7 @@ function getDashboard(month) {
     top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
     offBudget: offBudget_(byCatMap),
     savings: savings,
-    months: monthTotals_(allTx, isSave, today)
+    months: monthTotals_(allTx, isSave, today, month)
   };
 }
 
@@ -1190,7 +1200,7 @@ window.google = { script: { get run() {
   <section id="tab-dash" class="hidden">
     <div class="title-row"><h1>Tổng quan</h1><span class="muted" id="dashMonth"></span></div>
     <div class="mstrip-wrap">
-      <div class="mstrip" id="dashStrip" role="tablist" aria-label="Chọn tháng"></div>
+      <div class="mstrip" id="dashStrip" role="tablist" aria-label="Chọn tháng" onscroll="stripFade(this)"></div>
       <button class="mcal" aria-label="Chọn tháng khác" onclick="pickMonth(S.dashMonth, pickDashMonth)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></button>
     </div>
     <div id="dash"></div>
@@ -1206,7 +1216,7 @@ window.google = { script: { get run() {
       </div>
       <input type="hidden" id="hMonth">
       <div class="mstrip-wrap" id="hMonthBox" style="margin:0">
-        <div class="mstrip" id="histStrip" role="tablist" aria-label="Chọn tháng"></div>
+        <div class="mstrip" id="histStrip" role="tablist" aria-label="Chọn tháng" onscroll="stripFade(this)"></div>
         <button class="mcal" aria-label="Chọn tháng khác" onclick="pickMonth($('hMonth').value, pickHistMonth)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></button>
       </div>
       <div class="grid2 hidden" id="hRangeBox">
@@ -1619,7 +1629,7 @@ function renderStrip(id, months, sel, pick) {
   strip.innerHTML = months.map((m, i) => {
     const mo = +m.ym.slice(5), yy = m.ym.slice(2, 4);
     const label = m.ym === cur ? 'Tháng này' : 'T' + mo + (mo === 1 || i === 0 ? "/" + yy : '');
-    return `<button type="button" role="tab" class="mchip${m.ym === sel ? ' on' : ''}" aria-selected="${m.ym === sel}" data-ym="${m.ym}"
+    return `<button type="button" role="tab" class="mchip${m.ym === sel ? ' on' : ''}${m.ym === cur ? ' now' : ''}" aria-selected="${m.ym === sel}" data-ym="${m.ym}"
       aria-label="${ymLabel(m.ym)}: chi ${vnd(m.spend)}" onclick="stripPick('${id}', '${m.ym}')">
       <span>${label}</span><small class="num">${m.spend ? short(m.spend) : '—'}</small>
       <span class="mbar"><i style="width:${Math.round(m.spend / max * 100)}%"></i></span></button>`;
@@ -1629,7 +1639,9 @@ function renderStrip(id, months, sel, pick) {
 function centerStrip(id) {
   const strip = $(id), on = strip.querySelector('.on');
   strip.scrollLeft = on ? on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2 : strip.scrollWidth;
+  stripFade(strip);
 }
+function stripFade(strip) { strip.classList.toggle('more', strip.scrollLeft > 4); }
 function stripPick(id, ym) {
   $(id).querySelectorAll('.mchip').forEach(b => { b.classList.toggle('on', b.dataset.ym === ym); b.setAttribute('aria-selected', b.dataset.ym === ym); });
   centerStrip(id);
@@ -1792,7 +1804,11 @@ const dmy = ymd => ymd.slice(8) + '/' + ymd.slice(5, 7) + '/' + ymd.slice(0, 4);
 async function loadHistory() {
   const req = ++histReq;
   if (histMode === 'month') {
-    cachedCall('months', 'getMonthTotals', [], m => renderStrip('histStrip', m, $('hMonth').value, pickHistMonth)).catch(fail);
+    // Tháng đang xem cũ hơn dải mặc định thì xin server kéo dài dải tới tháng đó
+    const sel = $('hMonth').value, base = CACHE.months && CACHE.months.data;
+    const inBase = !base || base.some(m => m.ym === sel);
+    const key = inBase ? 'months' : 'months|' + sel;
+    cachedCall(key, 'getMonthTotals', inBase ? [] : [sel], m => renderStrip('histStrip', m, $('hMonth').value, pickHistMonth)).catch(fail);
   }
   try {
     let from = '', to = '', period;

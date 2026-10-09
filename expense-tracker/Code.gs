@@ -277,20 +277,25 @@ function offBudget_(byCatMap) {
  * Tổng CHI (không gồm để dành) của từng tháng, từ tháng cũ nhất có dữ liệu (ít nhất 6 tháng gần nhất,
  * tối đa 24 tháng) đến tháng hiện tại. Dùng cho dải chọn tháng.
  */
-function monthTotals_(allTx, isSave, today) {
+function monthTotals_(allTx, isSave, today, from) {
   const cur = today.slice(0, 7);
   let start = cur;
-  for (let i = 0; i < 5; i++) start = prevMonth_(start);
+  for (let i = 0; i < 5; i++) start = prevMonth_(start);                  // ít nhất 6 tháng gần nhất
   allTx.forEach(t => { const ym = t.date.slice(0, 7); if (ym < start) start = ym; });
+  let cap = cur;
+  for (let i = 0; i < 23; i++) cap = prevMonth_(cap);
+  if (start < cap) start = cap;                                            // tối đa 24 tháng
+  if (from && /^\d{4}-\d{2}$/.test(from) && from >= '2000-01' && from < start) start = from; // đang xem tháng cũ hơn: kéo dải tới đó
   const sums = {};
   allTx.forEach(t => { if (!isSave[t.category]) { const ym = t.date.slice(0, 7); sums[ym] = (sums[ym] || 0) + t.amount; } });
   const list = [];
-  for (let ym = cur, i = 0; i < 24 && ym >= start; i++, ym = prevMonth_(ym)) list.unshift({ ym: ym, spend: sums[ym] || 0 });
+  for (let ym = cur; ym >= start; ym = prevMonth_(ym)) list.unshift({ ym: ym, spend: sums[ym] || 0 });
   return list;
 }
 
-function getMonthTotals() {
-  return monthTotals_(readTx_(), saveNames_(getCategories_()), todayStr_());
+/** from (tùy chọn, yyyy-MM): bảo đảm dải tháng kéo dài tới tháng này. */
+function getMonthTotals(from) {
+  return monthTotals_(readTx_(), saveNames_(getCategories_()), todayStr_(), from);
 }
 
 /** Tên các danh mục loại "Để dành". */
@@ -370,7 +375,7 @@ function getDashboard(month) {
     top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
     offBudget: offBudget_(byCatMap),
     savings: savings,
-    months: monthTotals_(allTx, isSave, today)
+    months: monthTotals_(allTx, isSave, today, month)
   };
 }
 
