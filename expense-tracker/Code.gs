@@ -229,6 +229,9 @@ function getDashboard(month) {
   cur.forEach(t => { const c = ensure(t.category); c.amount += t.amount; c.count++; });
   prevTx.forEach(t => { ensure(t.category).prev += t.amount; });
 
+  // So cùng kỳ: ngày 1..N tháng này với ngày 1..N tháng trước (N = số ngày đã qua).
+  const prevSamePeriod = prevTx.filter(t => Number(t.date.slice(8, 10)) <= elapsed).reduce((s, t) => s + t.amount, 0);
+
   // Dự báo = đã chi + (chi thường ngày TB × số ngày còn lại). Khoản lớn không bị nhân lên.
   const routine = cur.filter(t => t.amount < BIG_ITEM_THRESHOLD).reduce((s, t) => s + t.amount, 0);
   const avgRoutine = elapsed ? routine / elapsed : 0;
@@ -241,6 +244,7 @@ function getDashboard(month) {
     month: month,
     total: total,
     prevTotal: prevTotal,
+    prevSamePeriod: prevSamePeriod,
     budget: budget,
     count: cur.length,
     daysInMonth: days,
@@ -493,6 +497,7 @@ function monthlyReview(month) {
   const summary = {
     thang: month,
     tong_chi: d.total, tong_ngan_sach: d.budget, thang_truoc: d.prevTotal,
+    cung_ky_thang_truoc: d.prevSamePeriod,
     so_ngay_da_qua: d.daysElapsed, so_ngay_trong_thang: d.daysInMonth,
     du_bao_cuoi_thang: d.forecast,
     theo_danh_muc: d.byCategory.map(c => ({ danh_muc: c.name, chi: c.amount, ngan_sach: c.budget, thang_truoc: c.prev, so_giao_dich: c.count })),
@@ -505,7 +510,7 @@ function monthlyReview(month) {
     system: 'Bạn là cố vấn tài chính cá nhân, thực dụng, nói thẳng. Viết tiếng Việt, xưng "bạn". ' +
       'Dựa hoàn toàn vào số liệu được cung cấp, không bịa thêm. Định dạng tiền kiểu 1.250.000đ. ' +
       'Trả lời đúng cấu trúc Markdown sau, tổng dưới 250 từ:\n' +
-      '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và tháng trước, dự báo cuối tháng nếu tháng chưa hết)\n' +
+      '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và so với CÙNG KỲ tháng trước (cung_ky_thang_truoc), dự báo cuối tháng nếu tháng chưa hết)\n' +
       '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, thay đổi lớn, khoản bất thường)\n' +
       '## Hành động tháng tới\n(3 gạch đầu dòng, cụ thể và đo được, vd "Giới hạn Ăn uống 3.500.000đ, tối đa 2 lần ăn ngoài/tuần")',
     messages: [{ role: 'user', content: 'Số liệu chi tiêu:\n' + JSON.stringify(summary) }]
@@ -516,7 +521,8 @@ function localReview_(d) {
   const f = n => Math.round(n).toLocaleString('vi-VN') + 'đ';
   const lines = ['## Tóm tắt'];
   lines.push('Tổng chi **' + f(d.total) + '** / ngân sách ' + f(d.budget) + ' (' + Math.round(d.total / (d.budget || 1) * 100) + '%).' +
-    (d.prevTotal ? ' So với tháng trước: ' + (d.total >= d.prevTotal ? '+' : '') + Math.round((d.total - d.prevTotal) / d.prevTotal * 100) + '%.' : '') +
+    (d.prevSamePeriod ? ' So với cùng kỳ tháng trước (ngày 1–' + d.daysElapsed + '): ' + (d.total >= d.prevSamePeriod ? '+' : '') +
+      Math.round((d.total - d.prevSamePeriod) / d.prevSamePeriod * 100) + '%.' : '') +
     (d.daysElapsed < d.daysInMonth ? ' Dự báo cuối tháng: ' + f(d.forecast) + '.' : ''));
   lines.push('## Điểm đáng chú ý');
   const over = d.byCategory.filter(c => c.budget && c.amount > c.budget);

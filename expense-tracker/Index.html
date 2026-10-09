@@ -375,15 +375,16 @@ async function loadDash() {
 
 function renderDash(d) {
   const pctBudget = d.budget ? d.total / d.budget * 100 : 0;
-  const delta = d.prevTotal ? (d.total - d.prevTotal) / d.prevTotal * 100 : null;
+  const delta = d.prevSamePeriod ? (d.total - d.prevSamePeriod) / d.prevSamePeriod * 100 : null;
+  const fullMonth = d.daysElapsed >= d.daysInMonth;
   const remain = d.budget - d.total;
   const kpi = (label, value, sub, cls) => `<div class="kpi"><div class="s">${label}</div><div class="v num ${cls || ''}">${value}</div><div class="s">${sub}</div></div>`;
 
   let html = '<div class="kpis">' +
     kpi('Tổng chi', vnd(d.total), d.count + ' giao dịch') +
     kpi('Ngân sách còn', vnd(remain), Math.round(pctBudget) + '% đã dùng', remain < 0 ? 'up' : '') +
-    kpi('So tháng trước', delta == null ? '—' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
-        'Tháng trước ' + short(d.prevTotal), delta == null ? '' : delta > 0 ? 'up' : 'down') +
+    kpi(fullMonth ? 'So tháng trước' : 'So cùng kỳ tháng trước', delta == null ? '—' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
+        (fullMonth ? 'Tháng trước ' : 'Ngày 1–' + d.daysElapsed + ': ') + short(d.prevSamePeriod), delta == null ? '' : delta > 0 ? 'up' : 'down') +
     kpi('Chi thường / ngày', vnd(d.avgPerDay), d.daysElapsed && d.daysElapsed < d.daysInMonth ? 'Dự báo ' + short(d.forecast) : d.daysElapsed + ' ngày') +
     '</div>';
 

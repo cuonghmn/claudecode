@@ -403,6 +403,9 @@ function getDashboard(month) {
   cur.forEach(t => { const c = ensure(t.category); c.amount += t.amount; c.count++; });
   prevTx.forEach(t => { ensure(t.category).prev += t.amount; });
 
+  // So cùng kỳ: ngày 1..N tháng này với ngày 1..N tháng trước (N = số ngày đã qua).
+  const prevSamePeriod = prevTx.filter(t => Number(t.date.slice(8, 10)) <= elapsed).reduce((s, t) => s + t.amount, 0);
+
   // Dự báo = đã chi + (chi thường ngày TB × số ngày còn lại). Khoản lớn không bị nhân lên.
   const routine = cur.filter(t => t.amount < BIG_ITEM_THRESHOLD).reduce((s, t) => s + t.amount, 0);
   const avgRoutine = elapsed ? routine / elapsed : 0;
@@ -415,6 +418,7 @@ function getDashboard(month) {
     month: month,
     total: total,
     prevTotal: prevTotal,
+    prevSamePeriod: prevSamePeriod,
     budget: budget,
     count: cur.length,
     daysInMonth: days,
@@ -667,6 +671,7 @@ function monthlyReview(month) {
   const summary = {
     thang: month,
     tong_chi: d.total, tong_ngan_sach: d.budget, thang_truoc: d.prevTotal,
+    cung_ky_thang_truoc: d.prevSamePeriod,
     so_ngay_da_qua: d.daysElapsed, so_ngay_trong_thang: d.daysInMonth,
     du_bao_cuoi_thang: d.forecast,
     theo_danh_muc: d.byCategory.map(c => ({ danh_muc: c.name, chi: c.amount, ngan_sach: c.budget, thang_truoc: c.prev, so_giao_dich: c.count })),
@@ -679,7 +684,7 @@ function monthlyReview(month) {
     system: 'Bạn là cố vấn tài chính cá nhân, thực dụng, nói thẳng. Viết tiếng Việt, xưng "bạn". ' +
       'Dựa hoàn toàn vào số liệu được cung cấp, không bịa thêm. Định dạng tiền kiểu 1.250.000đ. ' +
       'Trả lời đúng cấu trúc Markdown sau, tổng dưới 250 từ:\n' +
-      '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và tháng trước, dự báo cuối tháng nếu tháng chưa hết)\n' +
+      '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và so với CÙNG KỲ tháng trước (cung_ky_thang_truoc), dự báo cuối tháng nếu tháng chưa hết)\n' +
       '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, thay đổi lớn, khoản bất thường)\n' +
       '## Hành động tháng tới\n(3 gạch đầu dòng, cụ thể và đo được, vd "Giới hạn Ăn uống 3.500.000đ, tối đa 2 lần ăn ngoài/tuần")',
     messages: [{ role: 'user', content: 'Số liệu chi tiêu:\n' + JSON.stringify(summary) }]
@@ -690,7 +695,8 @@ function localReview_(d) {
   const f = n => Math.round(n).toLocaleString('vi-VN') + 'đ';
   const lines = ['## Tóm tắt'];
   lines.push('Tổng chi **' + f(d.total) + '** / ngân sách ' + f(d.budget) + ' (' + Math.round(d.total / (d.budget || 1) * 100) + '%).' +
-    (d.prevTotal ? ' So với tháng trước: ' + (d.total >= d.prevTotal ? '+' : '') + Math.round((d.total - d.prevTotal) / d.prevTotal * 100) + '%.' : '') +
+    (d.prevSamePeriod ? ' So với cùng kỳ tháng trước (ngày 1–' + d.daysElapsed + '): ' + (d.total >= d.prevSamePeriod ? '+' : '') +
+      Math.round((d.total - d.prevSamePeriod) / d.prevSamePeriod * 100) + '%.' : '') +
     (d.daysElapsed < d.daysInMonth ? ' Dự báo cuối tháng: ' + f(d.forecast) + '.' : ''));
   lines.push('## Điểm đáng chú ý');
   const over = d.byCategory.filter(c => c.budget && c.amount > c.budget);
@@ -1108,15 +1114,16 @@ async function loadDash() {
 
 function renderDash(d) {
   const pctBudget = d.budget ? d.total / d.budget * 100 : 0;
-  const delta = d.prevTotal ? (d.total - d.prevTotal) / d.prevTotal * 100 : null;
+  const delta = d.prevSamePeriod ? (d.total - d.prevSamePeriod) / d.prevSamePeriod * 100 : null;
+  const fullMonth = d.daysElapsed >= d.daysInMonth;
   const remain = d.budget - d.total;
   const kpi = (label, value, sub, cls) => `<div class="kpi"><div class="s">${label}</div><div class="v num ${cls || ''}">${value}</div><div class="s">${sub}</div></div>`;
 
   let html = '<div class="kpis">' +
     kpi('Tổng chi', vnd(d.total), d.count + ' giao dịch') +
     kpi('Ngân sách còn', vnd(remain), Math.round(pctBudget) + '% đã dùng', remain < 0 ? 'up' : '') +
-    kpi('So tháng trước', delta == null ? '—' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
-        'Tháng trước ' + short(d.prevTotal), delta == null ? '' : delta > 0 ? 'up' : 'down') +
+    kpi(fullMonth ? 'So tháng trước' : 'So cùng kỳ tháng trước', delta == null ? '—' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
+        (fullMonth ? 'Tháng trước ' : 'Ngày 1–' + d.daysElapsed + ': ') + short(d.prevSamePeriod), delta == null ? '' : delta > 0 ? 'up' : 'down') +
     kpi('Chi thường / ngày', vnd(d.avgPerDay), d.daysElapsed && d.daysElapsed < d.daysInMonth ? 'Dự báo ' + short(d.forecast) : d.daysElapsed + ' ngày') +
     '</div>';
 
