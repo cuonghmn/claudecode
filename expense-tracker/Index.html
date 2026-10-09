@@ -78,11 +78,14 @@
   .range { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0 8px; }
   .range button { padding: 7px 4px; font-size: 13px; font-weight: 500; white-space: nowrap; background: var(--bg);
     color: var(--muted); border: 1px solid var(--line); border-radius: 999px; }
+  .range.two { grid-template-columns: 1fr 1fr; margin-top: 0; }
   .range button.on { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); font-weight: 600; }
 
   .preview { border: 1px dashed var(--line); border-radius: 12px; padding: 10px; margin-top: 10px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .grid2 label { margin-top: 0; }
+  .grid2 > * { min-width: 0; }
+  input[type=date], input[type=month] { min-width: 0; max-width: 100%; }
 
   nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line);
     display: flex; justify-content: center; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); z-index: 5; }
@@ -97,6 +100,12 @@
   .review h3 { font-size: 14px; margin: 12px 0 4px; } .review h3:first-child { margin-top: 0; }
   .review ul { margin: 4px 0; padding-left: 18px; } .review p { margin: 4px 0; }
 
+  .cat-name { display: flex; flex-direction: column; min-width: 0; }
+  .cat-name small { color: var(--muted); font-size: 12px; }
+  .icon-pick { display: flex; gap: 4px; flex-wrap: wrap; }
+  .icon-pick button { padding: 4px 6px; font-size: 18px; background: transparent; }
+  .icon-pick button:hover { background: var(--bg); }
+  .notice { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-top: 10px; font-size: 14px; }
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
   .modal .sheet { background: var(--card); width: 100%; max-width: 520px; border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); max-height: 92vh; overflow: auto; }
   @media (min-width: 620px) { .modal { align-items: center; } .modal .sheet { border-radius: 18px; } }
@@ -157,20 +166,35 @@
   <section id="tab-hist" class="hidden">
     <h1>Lịch sử</h1>
     <div class="card">
-      <div class="grid2">
-        <input type="month" id="hMonth" onchange="loadHistory()">
-        <select id="hCat" onchange="loadHistory()"></select>
+      <div class="range two" id="hMode">
+        <button data-m="month" class="on" onclick="setHistMode('month')">Theo tháng</button>
+        <button data-m="range" onclick="setHistMode('range')">Từ ngày → đến ngày</button>
       </div>
-      <input id="hQ" placeholder="Tìm mô tả…" style="margin-top:8px" oninput="debounceHistory()">
+      <div class="row" id="hMonthBox">
+        <button class="ghost" onclick="shiftHistMonth(-1)" aria-label="Tháng trước">‹ Trước</button>
+        <input type="month" id="hMonth" class="grow" onchange="loadHistory()">
+        <button class="ghost" onclick="shiftHistMonth(1)" aria-label="Tháng sau">Sau ›</button>
+      </div>
+      <div class="grid2 hidden" id="hRangeBox">
+        <div><label for="hFrom">Từ ngày</label><input type="date" id="hFrom" onchange="loadHistory()"></div>
+        <div><label for="hTo">Đến ngày</label><input type="date" id="hTo" onchange="loadHistory()"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <select id="hCat" onchange="loadHistory()"></select>
+        <input id="hQ" placeholder="Tìm mô tả…" oninput="debounceHistory()">
+      </div>
     </div>
     <div class="card"><div class="row"><span class="grow muted" id="hSummary"></span></div><div id="hist"></div></div>
   </section>
 
   <!-- ============ TAB: NGÂN SÁCH ============ -->
   <section id="tab-budget" class="hidden">
-    <h1>Ngân sách tháng</h1>
+    <h1>Ngân sách &amp; danh mục</h1>
     <div class="card">
-      <p class="muted" style="margin-top:0">Hạn mức chi mỗi tháng cho từng danh mục. Muốn thêm/đổi tên danh mục hoặc từ khóa nhận diện, sửa trực tiếp sheet <b>DanhMuc</b>.</p>
+      <div class="row" style="align-items:flex-start">
+        <p class="muted grow" style="margin:0">Đặt hạn mức tháng cho từng danh mục. Bấm ✏️ để đổi tên, icon, từ khóa nhận diện hoặc xóa.</p>
+        <button onclick="openCategory()">+ Thêm danh mục</button>
+      </div>
       <div id="budgetList"></div>
       <div class="row" style="margin-top:12px">
         <span class="grow muted">Tổng: <b id="budgetTotal" class="num"></b></span>
@@ -205,7 +229,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&a
 const vnd = n => Math.round(n || 0).toLocaleString('vi-VN') + 'đ';
 const short = n => n >= 1e6 ? (n / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'tr' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
 const digits = s => Number(String(s).replace(/\D/g, '')) || 0;
-const icon = name => (S.cats[name] && S.cats[name].icon) || '•';
+const icon = name => esc((S.cats[name] && S.cats[name].icon) || '•');
 const ymLabel = ym => 'Tháng ' + Number(ym.slice(5)) + '/' + ym.slice(0, 4);
 const dLabel = ymd => {
   const t = S.init.today;
@@ -482,38 +506,146 @@ function md(text) {
 let hTimer;
 function debounceHistory() { clearTimeout(hTimer); hTimer = setTimeout(loadHistory, 350); }
 
+let histMode = 'month', histReq = 0;
+function setHistMode(m) {
+  histMode = m;
+  $('hMode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('hMonthBox').classList.toggle('hidden', m !== 'month');
+  $('hRangeBox').classList.toggle('hidden', m !== 'range');
+  if (m === 'range' && !$('hFrom').value) {
+    // Mặc định: từ ngày 1 của tháng đang xem đến hôm nay (hoặc cuối tháng đó)
+    const ym = $('hMonth').value || S.init.today.slice(0, 7);
+    $('hFrom').value = ym + '-01';
+    $('hTo').value = ym === S.init.today.slice(0, 7) ? S.init.today : ym + '-' + new Date(+ym.slice(0, 4), +ym.slice(5), 0).getDate();
+  }
+  loadHistory();
+}
+function shiftHistMonth(n) {
+  const p = ($('hMonth').value || S.init.today.slice(0, 7)).split('-').map(Number);
+  const d = new Date(p[0], p[1] - 1 + n, 1);
+  $('hMonth').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  loadHistory();
+}
+const dmy = ymd => ymd.slice(8) + '/' + ymd.slice(5, 7) + '/' + ymd.slice(0, 4);
+
 async function loadHistory() {
+  const req = ++histReq;
   $('hist').innerHTML = '<div class="empty"><span class="spin"></span></div>';
   try {
-    const list = await api('getTransactions', $('hMonth').value, $('hCat').value, $('hQ').value);
+    let from = '', to = '', period;
+    if (histMode === 'range') {
+      from = $('hFrom').value; to = $('hTo').value;
+      if (from && to && from > to) { $('hFrom').value = to; $('hTo').value = from; from = $('hFrom').value; to = $('hTo').value; }
+      period = (from ? dmy(from) : '…') + ' → ' + (to ? dmy(to) : '…');
+    } else {
+      period = ymLabel($('hMonth').value || S.init.today.slice(0, 7));
+    }
+    const list = await api('getTransactions', histMode === 'month' ? $('hMonth').value : '', $('hCat').value, $('hQ').value, from, to);
+    if (req !== histReq) return; // đã có lần lọc mới hơn
     const total = list.reduce((s, t) => s + t.amount, 0);
-    $('hSummary').innerHTML = list.length + ' khoản · <b class="num">' + vnd(total) + '</b>';
+    $('hSummary').innerHTML = esc(period) + ': ' + list.length + ' khoản · <b class="num">' + vnd(total) + '</b>';
     if (!list.length) { $('hist').innerHTML = '<div class="empty">Không có giao dịch phù hợp</div>'; return; }
     $('hist').innerHTML = groupByDay(list);
     bindTx($('hist'), list);
   } catch (e) { fail(e); }
 }
 
-/* ---------------- Ngân sách ---------------- */
-function renderBudgets() {
-  $('budgetList').innerHTML = S.init.categories.map((c, i) => `
-    <div class="cat-row row"><span>${c.icon}</span><span class="grow">${esc(c.name)}</span>
-      <input class="num" style="max-width:150px;text-align:right" inputmode="numeric" data-i="${i}" value="${c.budget.toLocaleString('vi-VN')}"
-        onblur="fmtInput(this)" oninput="updBudgetTotal()"></div>`).join('');
+/* ---------------- Ngân sách & danh mục ---------------- */
+async function renderBudgets() {
   $('sheetLink').href = S.init.sheetUrl || '#';
   $('sheetLink').parentNode.classList.toggle('hidden', !S.init.sheetUrl);
-  updBudgetTotal();
+  $('budgetList').innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  try {
+    S.catList = await api('getCategoryList');
+    $('budgetList').innerHTML = S.catList.map((c, i) => `
+      <div class="cat-row row"><span>${esc(c.icon)}</span>
+        <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản</small></span>
+        <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" aria-label="Ngân sách ${esc(c.name)}"
+          value="${c.budget.toLocaleString('vi-VN')}" onblur="fmtInput(this)" oninput="updBudgetTotal()">
+        <button class="ghost" title="Sửa danh mục" aria-label="Sửa ${esc(c.name)}" onclick="openCategory(${i})">✏️</button></div>`).join('');
+    updBudgetTotal();
+  } catch (e) { fail(e); }
 }
 function updBudgetTotal() {
   const t = Array.from($('budgetList').querySelectorAll('input')).reduce((s, el) => s + digits(el.value), 0);
   $('budgetTotal').textContent = vnd(t);
 }
 async function saveBudgetForm() {
-  const list = Array.from($('budgetList').querySelectorAll('input')).map(el => {
-    const c = S.init.categories[el.dataset.i]; c.budget = digits(el.value); return { name: c.name, budget: c.budget };
-  });
+  const list = Array.from($('budgetList').querySelectorAll('input')).map(el => ({ name: el.dataset.name, budget: digits(el.value) }));
   const btn = $('btnBudget'); busy(btn, true);
-  try { await api('saveBudgets', list); toast('Đã lưu ngân sách ✓'); } catch (e) { fail(e); } finally { busy(btn, false); }
+  try { await api('saveBudgets', list); await refreshInit(); toast('Đã lưu ngân sách ✓'); } catch (e) { fail(e); } finally { busy(btn, false); }
+}
+
+/** Nạp lại danh mục sau khi thêm/sửa/xóa để màn Ghi, Lịch sử, Tổng quan dùng bản mới. */
+async function refreshInit() {
+  const keepCat = $('hCat').value;
+  S.init = await api('getInitData');
+  S.cats = {}; S.init.categories.forEach(c => { S.cats[c.name] = c; });
+  $('hCat').innerHTML = '<option value="">Tất cả danh mục</option>' + catOptions(keepCat);
+}
+
+const ICONS = ['🍜', '☕', '🛵', '🚗', '🏠', '💡', '🛍️', '💄', '💊', '🏋️', '📚', '🎓', '🎬', '✈️', '🎁', '👶', '🐶', '💼', '📱', '💰', '❤️', '🧾', '📌'];
+
+function openCategory(i) {
+  const c = i == null ? { name: '', icon: '📌', budget: 0, keywords: '', count: 0 } : S.catList[i];
+  const isNew = i == null, isFallback = c.name === 'Khác';
+  S.editingCat = c;
+  openModal(`<h2>${isNew ? 'Thêm danh mục' : 'Sửa danh mục'}</h2>
+    <label for="cName">Tên danh mục</label>
+    <input id="cName" maxlength="40" value="${esc(c.name)}" placeholder="Ví dụ: Thể thao" ${isFallback ? 'disabled' : ''}>
+    <label for="cIcon">Icon</label>
+    <div class="row" style="align-items:flex-start">
+      <input id="cIcon" value="${esc(c.icon)}" style="max-width:64px;text-align:center;font-size:20px" maxlength="8">
+      <div class="icon-pick grow">${ICONS.map(x => `<button type="button" onclick="$('cIcon').value='${x}'">${x}</button>`).join('')}</div>
+    </div>
+    <label for="cBudget">Ngân sách tháng (đ)</label>
+    <input id="cBudget" class="num" inputmode="numeric" value="${c.budget ? c.budget.toLocaleString('vi-VN') : ''}" onblur="fmtInput(this)" placeholder="0">
+    <label for="cKw">Từ khóa nhận diện</label>
+    <textarea id="cKw" style="min-height:64px" placeholder="Cách nhau bằng dấu phẩy, ví dụ: gym, yoga, bơi">${esc(c.keywords)}</textarea>
+    <div class="muted">Khi gõ "gym 500k", app tự xếp khoản đó vào danh mục này.</div>
+    ${!isNew && !isFallback ? `<div id="delBox"></div>` : ''}
+    ${isFallback ? '<div class="notice">"Khác" là danh mục dự phòng cho khoản chưa rõ loại, nên không đổi tên hay xóa được.</div>' : ''}
+    <div class="row" style="margin-top:14px">
+      ${!isNew && !isFallback ? '<button class="danger" id="btnCatDel" onclick="askDeleteCategory()">Xóa</button>' : ''}
+      <span class="grow"></span><button class="ghost" onclick="closeModal()">Hủy</button>
+      <button class="primary" id="btnCat" onclick="saveCategoryForm()">${isNew ? 'Thêm' : 'Lưu'}</button>
+    </div>`);
+  if (isNew) setTimeout(() => $('cName').focus(), 50);
+}
+
+async function saveCategoryForm() {
+  const c = S.editingCat;
+  const data = { oldName: c.name, name: $('cName').value, icon: $('cIcon').value, budget: digits($('cBudget').value), keywords: $('cKw').value };
+  if (!data.name.trim()) { toast('Hãy nhập tên danh mục'); $('cName').focus(); return; }
+  const btn = $('btnCat'); busy(btn, true);
+  try {
+    const r = await api('saveCategory', data);
+    closeModal();
+    toast(r.created ? 'Đã thêm "' + r.name + '" ✓' : r.renamed ? 'Đã lưu, chuyển ' + r.renamed + ' khoản sang tên mới ✓' : 'Đã lưu ✓');
+    await refreshInit(); renderBudgets();
+  } catch (e) { fail(e); busy(btn, false); }
+}
+
+function askDeleteCategory() {
+  const c = S.editingCat;
+  const others = S.catList.filter(x => x.name !== c.name);
+  $('delBox').innerHTML = `<div class="notice">` + (c.count
+    ? `Danh mục này đang có <b>${c.count} khoản chi</b>. Chuyển các khoản đó sang:
+       <select id="cMoveTo" style="margin-top:8px">${others.map(x => `<option${x.name === 'Khác' ? ' selected' : ''} value="${esc(x.name)}">${esc(x.icon)} ${esc(x.name)}</option>`).join('')}</select>`
+    : 'Danh mục này chưa có khoản chi nào.') +
+    `<div class="row" style="margin-top:10px"><span class="grow"></span><button class="danger" id="btnCatDelOk" onclick="confirmDeleteCategory()">Xác nhận xóa "${esc(c.name)}"</button></div></div>`;
+  $('btnCatDel').classList.add('hidden');
+}
+
+async function confirmDeleteCategory() {
+  const c = S.editingCat, moveTo = $('cMoveTo') ? $('cMoveTo').value : '';
+  const btn = $('btnCatDelOk'); busy(btn, true);
+  try {
+    const r = await api('deleteCategory', c.name, moveTo);
+    closeModal();
+    toast('Đã xóa "' + r.deleted + '"' + (r.moved ? ', chuyển ' + r.moved + ' khoản sang "' + moveTo + '"' : '') + ' ✓');
+    await refreshInit(); renderBudgets();
+  } catch (e) { fail(e); busy(btn, false); }
 }
 
 /* ---------------- Khởi động ---------------- */

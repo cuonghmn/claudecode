@@ -195,10 +195,13 @@ function getInitData() {
   };
 }
 
-function getTransactions(month, category, query) {
+/** Lọc theo tháng (yyyy-MM) HOẶC theo khoảng ngày from..to (yyyy-MM-dd, tính cả 2 đầu). */
+function getTransactions(month, category, query, from, to) {
   const q = String(query || '').trim().toLowerCase();
+  if (from && to && from > to) { const x = from; from = to; to = x; }
+  const byRange = !!(from || to);
   const list = readTx_().filter(t =>
-    (!month || t.date.slice(0, 7) === month) &&
+    (byRange ? (!from || t.date >= from) && (!to || t.date <= to) : (!month || t.date.slice(0, 7) === month)) &&
     (!category || t.category === category) &&
     (!q || (t.description + ' ' + t.note + ' ' + t.category).toLowerCase().indexOf(q) >= 0));
   return sortTx_(list);
@@ -285,7 +288,7 @@ function normalizeItem_(it, catNames, today) {
   return {
     date: date,
     amount: amount,
-    category: catNames.indexOf(it.category) >= 0 ? it.category : 'Khác',
+    category: catNames.indexOf(it.category) >= 0 ? it.category : FALLBACK_CATEGORY,
     description: String(it.description || '').trim().slice(0, 200),
     method: METHODS.indexOf(it.method) >= 0 ? it.method : DEFAULT_METHOD,
     note: String(it.note || '').trim().slice(0, 300)
@@ -345,6 +348,87 @@ function saveBudgets(list) {
     sh.getRange(2, 3, n, 1).setValues(vals);
     return Object.keys(map).length;
   });
+}
+
+/* ============================ Quản lý danh mục ============================ */
+
+const FALLBACK_CATEGORY = 'Khác'; // khoản không rõ danh mục sẽ vào đây, nên không cho xóa/đổi tên
+
+/** Danh mục kèm từ khóa và số khoản chi đang thuộc danh mục (cho màn quản lý). */
+function getCategoryList() {
+  const counts = {};
+  readTx_().forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1; });
+  return getCategories_().map(c => ({
+    name: c.name, icon: c.icon, budget: c.budget,
+    keywords: c.keywords.join(', '), count: counts[c.name] || 0
+  }));
+}
+
+/** Thêm mới (không có oldName) hoặc sửa danh mục. Đổi tên thì cập nhật luôn các khoản chi cũ. */
+function saveCategory(c) {
+  const name = String(c.name || '').trim().replace(/\s+/g, ' ');
+  if (!name) throw new Error('Hãy nhập tên danh mục.');
+  if (name.length > 40) throw new Error('Tên danh mục tối đa 40 ký tự.');
+  const icon = String(c.icon || '').trim().slice(0, 8) || '📌';
+  const budget = Math.max(0, Math.round(Number(c.budget) || 0));
+  const keywords = String(c.keywords || '').split(',').map(k => k.trim().toLowerCase()).filter(Boolean).join(', ');
+  const oldName = String(c.oldName || '').trim();
+
+  return withLock_(() => {
+    const sh = sheet_(SHEET_CAT);
+    const n = Math.max(0, sh.getLastRow() - 1);
+    const names = n ? sh.getRange(2, 1, n, 1).getValues().map(r => String(r[0]).trim()) : [];
+    const dup = names.findIndex(x => x.toLowerCase() === name.toLowerCase());
+
+    if (!oldName) {
+      if (dup >= 0) throw new Error('Đã có danh mục "' + names[dup] + '".');
+      sh.getRange(n + 2, 1, 1, 4).setValues([[name, icon, budget, keywords]]);
+      return { name: name, created: true };
+    }
+    const idx = names.indexOf(oldName);
+    if (idx < 0) throw new Error('Không tìm thấy danh mục "' + oldName + '".');
+    if (dup >= 0 && dup !== idx) throw new Error('Đã có danh mục "' + names[dup] + '".');
+    if (oldName === FALLBACK_CATEGORY && name !== FALLBACK_CATEGORY) {
+      throw new Error('Không đổi tên được danh mục "' + FALLBACK_CATEGORY + '" vì app dùng nó cho khoản chưa rõ danh mục.');
+    }
+    sh.getRange(idx + 2, 1, 1, 4).setValues([[name, icon, budget, keywords]]);
+    const moved = name !== oldName ? renameTxCategory_(oldName, name) : 0;
+    return { name: name, renamed: moved };
+  });
+}
+
+/** Xóa danh mục. Nếu đang có khoản chi thì bắt buộc chọn danh mục để chuyển sang (moveTo). */
+function deleteCategory(name, moveTo) {
+  if (name === FALLBACK_CATEGORY) throw new Error('Không xóa được danh mục "' + FALLBACK_CATEGORY + '".');
+  return withLock_(() => {
+    const sh = sheet_(SHEET_CAT);
+    const n = Math.max(0, sh.getLastRow() - 1);
+    const names = n ? sh.getRange(2, 1, n, 1).getValues().map(r => String(r[0]).trim()) : [];
+    const idx = names.indexOf(name);
+    if (idx < 0) throw new Error('Không tìm thấy danh mục "' + name + '".');
+    const count = readTx_().filter(t => t.category === name).length;
+    let moved = 0;
+    if (count) {
+      if (!moveTo || moveTo === name || names.indexOf(moveTo) < 0) {
+        throw new Error('Danh mục đang có ' + count + ' khoản chi, hãy chọn danh mục để chuyển sang.');
+      }
+      moved = renameTxCategory_(name, moveTo);
+    }
+    sh.deleteRow(idx + 2);
+    return { deleted: name, moved: moved };
+  });
+}
+
+function renameTxCategory_(from, to) {
+  const sh = sheet_(SHEET_TX);
+  const n = sh.getLastRow() - 1;
+  if (n < 1) return 0;
+  const range = sh.getRange(2, 4, n, 1);
+  const vals = range.getValues();
+  let k = 0;
+  vals.forEach(r => { if (String(r[0]) === from) { r[0] = to; k++; } });
+  if (k) range.setValues(vals);
+  return k;
 }
 
 /* ============================ Tách câu nhập tự nhiên ============================ */
@@ -431,11 +515,14 @@ function parseLocal_(text, cats, today) {
   return out;
 }
 
-/** Chọn danh mục có từ khóa khớp DÀI NHẤT (vd "mua cafe" → Ăn uống, không phải Mua sắm). */
+/**
+ * Chọn danh mục có từ khóa khớp DÀI NHẤT (vd "mua cafe" → Ăn uống, không phải Mua sắm).
+ * Trùng độ dài thì danh mục đứng SAU thắng: danh mục người dùng tự thêm (nằm cuối) được ưu tiên hơn mặc định.
+ */
 function guessCategory_(text, cats) {
-  let best = 'Khác', bestLen = 0;
+  let best = FALLBACK_CATEGORY, bestLen = 0;
   cats.forEach(c => c.keywords.forEach(k => {
-    if (k.length > bestLen && text.indexOf(k) >= 0) { best = c.name; bestLen = k.length; }
+    if (k.length >= bestLen && text.indexOf(k) >= 0) { best = c.name; bestLen = k.length; }
   }));
   return best;
 }
