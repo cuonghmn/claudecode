@@ -104,7 +104,7 @@ ${code}
     sheets = {}; try { localStorage.removeItem(MOCK_KEY); } catch (e) {}
     setup(); seedDemoData(); persist();
   }
-  if (!restore()) reset();
+  if (!restore()) reset(); else setup(); // setup an toàn khi chạy lại: nâng cấp dữ liệu cũ (vd thêm cột Loại)
   return { ${API.join(', ')}, reset };
 })();
 

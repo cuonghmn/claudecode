@@ -16,7 +16,11 @@
 const SHEET_TX = 'GiaoDich';
 const SHEET_CAT = 'DanhMuc';
 const TX_HEADERS = ['ID', 'Ngày', 'Số tiền', 'Danh mục', 'Mô tả', 'Phương thức', 'Ghi chú', 'Tạo lúc'];
-const CAT_HEADERS = ['Danh mục', 'Icon', 'Ngân sách tháng', 'Từ khóa (cách nhau bởi dấu phẩy)'];
+const CAT_HEADERS = ['Danh mục', 'Icon', 'Ngân sách tháng', 'Từ khóa (cách nhau bởi dấu phẩy)', 'Loại'];
+// Loại danh mục: "Chi tiêu" tính vào tổng chi; "Để dành" (tiết kiệm, đầu tư…) là phân bổ tiền,
+// không tính vào tổng chi/ngân sách chi, theo dõi riêng so với mục tiêu.
+const KIND_SPEND = 'Chi tiêu';
+const KIND_SAVE = 'Để dành';
 const METHODS = ['Chuyển khoản', 'Thẻ', 'Tiền mặt', 'Ví điện tử'];
 const DEFAULT_METHOD = 'Chuyển khoản';
 const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
@@ -27,16 +31,16 @@ const BIG_ITEM_THRESHOLD = 1000000;
 const FALLBACK_MODELS = ['claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1', 'claude-sonnet-5-5'];
 
 const DEFAULT_CATEGORIES = [
-  ['Ăn uống', '🍜', 4000000, 'ăn,phở,bún,cơm,mì,bánh mì,trưa,tối,sáng,cafe,cà phê,coffee,trà sữa,trà,nước,nhậu,bia,lẩu,nướng,highland,starbucks,phúc long,grabfood,shopeefood,đi chợ,siêu thị,winmart,bách hóa xanh,trái cây'],
-  ['Đi lại', '🛵', 1000000, 'grab,be,xanh sm,taxi,xăng,gửi xe,vé xe,xe buýt,bus,metro,máy bay,vé máy bay,rửa xe,sửa xe,thay nhớt,cầu đường'],
-  ['Nhà ở & Hóa đơn', '🏠', 6000000, 'tiền nhà,thuê nhà,điện,tiền điện,tiền nước,internet,wifi,cước,điện thoại,4g,gas,phí quản lý,chung cư'],
-  ['Mua sắm', '🛍️', 2000000, 'mua,quần,áo,giày,dép,túi,shopee,lazada,tiki,tiktok shop,đồ dùng,mỹ phẩm,cắt tóc'],
-  ['Sức khỏe', '💊', 500000, 'thuốc,khám,bệnh viện,phòng khám,nha khoa,gym,yoga,bảo hiểm,vitamin'],
-  ['Học tập', '📚', 500000, 'sách,khóa học,course,học phí,udemy,coursera,học'],
-  ['Giải trí', '🎬', 800000, 'phim,xem phim,cgv,netflix,spotify,youtube,game,karaoke,du lịch,khách sạn,vé xem'],
-  ['Gia đình & Hiếu hỉ', '🎁', 1000000, 'biếu,mừng,đám cưới,cưới,đám,sinh nhật,quà,gửi mẹ,gửi bố,gia đình,lì xì'],
-  ['Tiết kiệm & Đầu tư', '💰', 3000000, 'tiết kiệm,gửi tiết kiệm,đầu tư,chứng khoán,cổ phiếu,vàng,quỹ,ccq'],
-  ['Khác', '📌', 500000, '']
+  ['Ăn uống', '🍜', 4000000, 'ăn,phở,bún,cơm,mì,bánh mì,trưa,tối,sáng,cafe,cà phê,coffee,trà sữa,trà,nước,nhậu,bia,lẩu,nướng,highland,starbucks,phúc long,grabfood,shopeefood,đi chợ,siêu thị,winmart,bách hóa xanh,trái cây', KIND_SPEND],
+  ['Đi lại', '🛵', 1000000, 'grab,be,xanh sm,taxi,xăng,gửi xe,vé xe,xe buýt,bus,metro,máy bay,vé máy bay,rửa xe,sửa xe,thay nhớt,cầu đường', KIND_SPEND],
+  ['Nhà ở & Hóa đơn', '🏠', 6000000, 'tiền nhà,thuê nhà,điện,tiền điện,tiền nước,internet,wifi,cước,điện thoại,4g,gas,phí quản lý,chung cư', KIND_SPEND],
+  ['Mua sắm', '🛍️', 2000000, 'mua,quần,áo,giày,dép,túi,shopee,lazada,tiki,tiktok shop,đồ dùng,mỹ phẩm,cắt tóc', KIND_SPEND],
+  ['Sức khỏe', '💊', 500000, 'thuốc,khám,bệnh viện,phòng khám,nha khoa,gym,yoga,bảo hiểm,vitamin', KIND_SPEND],
+  ['Học tập', '📚', 500000, 'sách,khóa học,course,học phí,udemy,coursera,học', KIND_SPEND],
+  ['Giải trí', '🎬', 800000, 'phim,xem phim,cgv,netflix,spotify,youtube,game,karaoke,du lịch,khách sạn,vé xem', KIND_SPEND],
+  ['Gia đình & Hiếu hỉ', '🎁', 1000000, 'biếu,mừng,đám cưới,cưới,đám,sinh nhật,quà,gửi mẹ,gửi bố,gia đình,lì xì', KIND_SPEND],
+  ['Tiết kiệm & Đầu tư', '💰', 3000000, 'tiết kiệm,gửi tiết kiệm,đầu tư,chứng khoán,cổ phiếu,vàng,quỹ,ccq', KIND_SAVE],
+  ['Khác', '📌', 500000, '', KIND_SPEND]
 ];
 
 /* ============================ Web app & menu ============================ */
@@ -76,7 +80,19 @@ function setup() {
   let cat = ss.getSheetByName(SHEET_CAT);
   if (!cat) {
     cat = ss.insertSheet(SHEET_CAT);
-    cat.getRange(2, 1, DEFAULT_CATEGORIES.length, 4).setValues(DEFAULT_CATEGORIES);
+    cat.getRange(2, 1, DEFAULT_CATEGORIES.length, 5).setValues(DEFAULT_CATEGORIES);
+  }
+  // Nâng cấp sheet cũ (chưa có cột Loại): điền mặc định, danh mục tiết kiệm/đầu tư là "Để dành".
+  const nCat = cat.getLastRow() - 1;
+  if (nCat > 0) {
+    const r = cat.getRange(2, 1, nCat, 5), v = r.getValues();
+    let changed = false;
+    v.forEach(row => {
+      if (row[0] && row[4] !== KIND_SPEND && row[4] !== KIND_SAVE) {
+        row[4] = /tiết kiệm|đầu tư/i.test(String(row[0])) ? KIND_SAVE : KIND_SPEND; changed = true;
+      }
+    });
+    if (changed) r.setValues(v);
   }
   cat.getRange(1, 1, 1, CAT_HEADERS.length).setValues([CAT_HEADERS])
     .setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
@@ -149,13 +165,14 @@ function getCategories_() {
   const sh = sheet_(SHEET_CAT);
   const n = sh.getLastRow() - 1;
   if (n < 1) return [];
-  return sh.getRange(2, 1, n, 4).getValues()
+  return sh.getRange(2, 1, n, 5).getValues()
     .filter(r => String(r[0]).trim())
     .map(r => ({
       name: String(r[0]).trim(),
       icon: String(r[1] || '•'),
       budget: Number(r[2]) || 0,
-      keywords: String(r[3] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+      keywords: String(r[3] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
+      kind: String(r[4]).trim() === KIND_SAVE ? 'save' : 'spend'
     }));
 }
 
@@ -186,7 +203,7 @@ function sortTx_(list) {
 function getInitData() {
   const cats = getCategories_();
   return {
-    categories: cats.map(c => ({ name: c.name, icon: c.icon, budget: c.budget })),
+    categories: cats.map(c => ({ name: c.name, icon: c.icon, budget: c.budget, kind: c.kind })),
     methods: METHODS,
     defaultMethod: DEFAULT_METHOD,
     today: todayStr_(),
@@ -219,12 +236,14 @@ function getRecent(range) {
   else if (range === 'month') start = today.slice(0, 7) + '-01';
   else { range = '3d'; start = addDays_(today, -2); }
   const all = readTx_();
+  const isSave = saveNames_(getCategories_());
   const items = sortTx_(all.filter(t => t.date >= start && t.date <= today));
   return {
     range: range,
     start: start,
-    todayTotal: all.filter(t => t.date === today).reduce((s, t) => s + t.amount, 0),
-    total: items.reduce((s, t) => s + t.amount, 0),
+    todayTotal: all.filter(t => t.date === today && !isSave[t.category]).reduce((s, t) => s + t.amount, 0),
+    total: items.filter(t => !isSave[t.category]).reduce((s, t) => s + t.amount, 0),
+    saved: items.filter(t => isSave[t.category]).reduce((s, t) => s + t.amount, 0),
     items: items,
     quick: quickPicks_(all, today)
   };
@@ -254,9 +273,18 @@ function offBudget_(byCatMap) {
   return { total: cats.reduce((s, c) => s + c.amount, 0), categories: cats.map(c => ({ name: c.name, amount: c.amount })) };
 }
 
+/** Tên các danh mục loại "Để dành". */
+function saveNames_(cats) {
+  const m = {}; cats.forEach(c => { if (c.kind === 'save') m[c.name] = true; }); return m;
+}
+
 function getDashboard(month) {
-  const cats = getCategories_();
-  const all = readTx_();
+  const allCats = getCategories_();
+  const isSave = saveNames_(allCats);
+  const cats = allCats.filter(c => c.kind !== 'save');      // mọi số liệu "chi" chỉ tính danh mục Chi tiêu
+  const saveCats = allCats.filter(c => c.kind === 'save');
+  const allTx = readTx_();
+  const all = allTx.filter(t => !isSave[t.category]);
   const prev = prevMonth_(month);
   const cur = all.filter(t => t.date.slice(0, 7) === month);
   const prevTx = all.filter(t => t.date.slice(0, 7) === prev);
@@ -264,12 +292,24 @@ function getDashboard(month) {
   const prevTotal = prevTx.reduce((s, t) => s + t.amount, 0);
   const budget = cats.reduce((s, c) => s + c.budget, 0);
 
+  // Để dành trong tháng, so với mục tiêu (= "ngân sách" của danh mục Để dành)
+  const savedTx = allTx.filter(t => isSave[t.category] && t.date.slice(0, 7) === month);
+  const savings = {
+    total: savedTx.reduce((s, t) => s + t.amount, 0),
+    target: saveCats.reduce((s, c) => s + c.budget, 0),
+    categories: saveCats.map(c => ({
+      name: c.name, icon: c.icon, target: c.budget,
+      amount: savedTx.filter(t => t.category === c.name).reduce((s, t) => s + t.amount, 0)
+    })).filter(c => c.amount || c.target)
+  };
+
   const today = todayStr_();
   const days = daysInMonth_(month);
   const elapsed = month === today.slice(0, 7) ? Number(today.slice(8, 10)) : (month < today.slice(0, 7) ? days : 0);
 
   const byCatMap = {};
   cats.forEach(c => { byCatMap[c.name] = { name: c.name, icon: c.icon, budget: c.budget, amount: 0, prev: 0, count: 0 }; });
+  // (danh mục Để dành không có trong byCatMap vì giao dịch của chúng đã được lọc khỏi "all")
   const ensure = name => byCatMap[name] || (byCatMap[name] = { name: name, icon: '•', budget: 0, amount: 0, prev: 0, count: 0 });
   cur.forEach(t => { const c = ensure(t.category); c.amount += t.amount; c.count++; });
   prevTx.forEach(t => { ensure(t.category).prev += t.amount; });
@@ -308,7 +348,8 @@ function getDashboard(month) {
     dailyRoutine: dailyRoutine,           // chỉ chi thường ngày, để biểu đồ không bị khoản lớn lấn át
     bigItems: { count: big.length, total: big.reduce((s, t) => s + t.amount, 0), threshold: BIG_ITEM_THRESHOLD },
     top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
-    offBudget: offBudget_(byCatMap)
+    offBudget: offBudget_(byCatMap),
+    savings: savings
   };
 }
 
@@ -412,7 +453,7 @@ function getCategoryList() {
   const counts = {};
   readTx_().forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1; });
   return getCategories_().map(c => ({
-    name: c.name, icon: c.icon, budget: c.budget,
+    name: c.name, icon: c.icon, budget: c.budget, kind: c.kind,
     keywords: c.keywords.join(', '), count: counts[c.name] || 0
   }));
 }
@@ -426,6 +467,10 @@ function saveCategory(c) {
   const budget = Math.max(0, Math.round(Number(c.budget) || 0));
   const keywords = String(c.keywords || '').split(',').map(k => k.trim().toLowerCase()).filter(Boolean).join(', ');
   const oldName = String(c.oldName || '').trim();
+  const kind = c.kind === 'save' ? KIND_SAVE : KIND_SPEND;
+  if (kind === KIND_SAVE && (name === FALLBACK_CATEGORY || oldName === FALLBACK_CATEGORY)) {
+    throw new Error('Danh mục "' + FALLBACK_CATEGORY + '" phải là loại Chi tiêu.');
+  }
 
   return withLock_(() => {
     const sh = sheet_(SHEET_CAT);
@@ -435,7 +480,7 @@ function saveCategory(c) {
 
     if (!oldName) {
       if (dup >= 0) throw new Error('Đã có danh mục "' + names[dup] + '".');
-      sh.getRange(n + 2, 1, 1, 4).setValues([[name, icon, budget, keywords]]);
+      sh.getRange(n + 2, 1, 1, 5).setValues([[name, icon, budget, keywords, kind]]);
       return { name: name, created: true };
     }
     const idx = names.indexOf(oldName);
@@ -444,7 +489,7 @@ function saveCategory(c) {
     if (oldName === FALLBACK_CATEGORY && name !== FALLBACK_CATEGORY) {
       throw new Error('Không đổi tên được danh mục "' + FALLBACK_CATEGORY + '" vì app dùng nó cho khoản chưa rõ danh mục.');
     }
-    sh.getRange(idx + 2, 1, 1, 4).setValues([[name, icon, budget, keywords]]);
+    sh.getRange(idx + 2, 1, 1, 5).setValues([[name, icon, budget, keywords, kind]]);
     const moved = name !== oldName ? renameTxCategory_(oldName, name) : 0;
     return { name: name, renamed: moved };
   });
@@ -732,13 +777,15 @@ function monthlyReview(month) {
     theo_danh_muc: d.byCategory.map(c => ({ danh_muc: c.name, chi: c.amount, ngan_sach: c.budget, thang_truoc: c.prev, so_giao_dich: c.count })),
     khoan_lon_nhat: d.top.map(t => ({ ngay: t.date, so_tien: t.amount, danh_muc: t.category, mo_ta: t.description })),
     chi_theo_ngay: d.daily,
-    chi_ngoai_ngan_sach: d.offBudget
+    chi_ngoai_ngan_sach: d.offBudget,
+    de_danh: d.savings
   };
   try {
     return callAI_({
       effort: 'medium',
       system: 'Bạn là cố vấn tài chính cá nhân, thực dụng, nói thẳng. Viết tiếng Việt, xưng "bạn". ' +
         'Dựa hoàn toàn vào số liệu được cung cấp, không bịa thêm. Định dạng tiền kiểu 1.250.000đ. ' +
+        'Lưu ý: tong_chi KHÔNG gồm tiền để dành (de_danh: tiết kiệm/đầu tư so với mục tiêu); để dành là điểm tích cực, không phải chi tiêu. ' +
         'Trả lời đúng cấu trúc Markdown sau, tổng dưới 250 từ:\n' +
         '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và so với CÙNG KỲ tháng trước (cung_ky_thang_truoc), dự báo cuối tháng nếu tháng chưa hết)\n' +
         '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, chi ngoài ngân sách (chi_ngoai_ngan_sach) nếu có, thay đổi lớn, khoản bất thường)\n' +
@@ -757,6 +804,10 @@ function localReview_(d) {
     (d.prevSamePeriod ? ' So với cùng kỳ tháng trước (ngày 1–' + d.daysElapsed + '): ' + (d.total >= d.prevSamePeriod ? '+' : '') +
       Math.round((d.total - d.prevSamePeriod) / d.prevSamePeriod * 100) + '%.' : '') +
     (d.daysElapsed < d.daysInMonth ? ' Dự báo cuối tháng: ' + f(d.forecast) + '.' : ''));
+  if (d.savings && (d.savings.total || d.savings.target)) {
+    lines.push('Để dành **' + f(d.savings.total) + '**' + (d.savings.target ? ' / mục tiêu ' + f(d.savings.target) +
+      ' (' + Math.round(d.savings.total / d.savings.target * 100) + '%)' : '') + ', không tính vào tổng chi.');
+  }
   lines.push('## Điểm đáng chú ý');
   if (d.offBudget && d.offBudget.total) {
     lines.push('- Chi ngoài ngân sách **' + f(d.offBudget.total) + '** ở ' + d.offBudget.categories.length + ' danh mục (' +

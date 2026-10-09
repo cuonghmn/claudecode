@@ -114,6 +114,8 @@
   .pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
   .pill.off { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
   .bar > i.off { background: var(--muted); opacity: .45; }
+  .pill.save { color: var(--brand); background: var(--brand-soft); }
+  .amt.save { color: var(--brand); }
   .icon-pick { display: flex; gap: 4px; flex-wrap: wrap; }
   .icon-pick button { min-height: 40px; min-width: 40px; padding: 4px 6px; font-size: 18px; background: transparent; }
   .icon-pick button:hover { background: var(--bg); }
@@ -223,7 +225,11 @@ const Backend = (function () {
 const SHEET_TX = 'GiaoDich';
 const SHEET_CAT = 'DanhMuc';
 const TX_HEADERS = ['ID', 'Ngày', 'Số tiền', 'Danh mục', 'Mô tả', 'Phương thức', 'Ghi chú', 'Tạo lúc'];
-const CAT_HEADERS = ['Danh mục', 'Icon', 'Ngân sách tháng', 'Từ khóa (cách nhau bởi dấu phẩy)'];
+const CAT_HEADERS = ['Danh mục', 'Icon', 'Ngân sách tháng', 'Từ khóa (cách nhau bởi dấu phẩy)', 'Loại'];
+// Loại danh mục: "Chi tiêu" tính vào tổng chi; "Để dành" (tiết kiệm, đầu tư…) là phân bổ tiền,
+// không tính vào tổng chi/ngân sách chi, theo dõi riêng so với mục tiêu.
+const KIND_SPEND = 'Chi tiêu';
+const KIND_SAVE = 'Để dành';
 const METHODS = ['Chuyển khoản', 'Thẻ', 'Tiền mặt', 'Ví điện tử'];
 const DEFAULT_METHOD = 'Chuyển khoản';
 const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
@@ -234,16 +240,16 @@ const BIG_ITEM_THRESHOLD = 1000000;
 const FALLBACK_MODELS = ['claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1', 'claude-sonnet-5-5'];
 
 const DEFAULT_CATEGORIES = [
-  ['Ăn uống', '🍜', 4000000, 'ăn,phở,bún,cơm,mì,bánh mì,trưa,tối,sáng,cafe,cà phê,coffee,trà sữa,trà,nước,nhậu,bia,lẩu,nướng,highland,starbucks,phúc long,grabfood,shopeefood,đi chợ,siêu thị,winmart,bách hóa xanh,trái cây'],
-  ['Đi lại', '🛵', 1000000, 'grab,be,xanh sm,taxi,xăng,gửi xe,vé xe,xe buýt,bus,metro,máy bay,vé máy bay,rửa xe,sửa xe,thay nhớt,cầu đường'],
-  ['Nhà ở & Hóa đơn', '🏠', 6000000, 'tiền nhà,thuê nhà,điện,tiền điện,tiền nước,internet,wifi,cước,điện thoại,4g,gas,phí quản lý,chung cư'],
-  ['Mua sắm', '🛍️', 2000000, 'mua,quần,áo,giày,dép,túi,shopee,lazada,tiki,tiktok shop,đồ dùng,mỹ phẩm,cắt tóc'],
-  ['Sức khỏe', '💊', 500000, 'thuốc,khám,bệnh viện,phòng khám,nha khoa,gym,yoga,bảo hiểm,vitamin'],
-  ['Học tập', '📚', 500000, 'sách,khóa học,course,học phí,udemy,coursera,học'],
-  ['Giải trí', '🎬', 800000, 'phim,xem phim,cgv,netflix,spotify,youtube,game,karaoke,du lịch,khách sạn,vé xem'],
-  ['Gia đình & Hiếu hỉ', '🎁', 1000000, 'biếu,mừng,đám cưới,cưới,đám,sinh nhật,quà,gửi mẹ,gửi bố,gia đình,lì xì'],
-  ['Tiết kiệm & Đầu tư', '💰', 3000000, 'tiết kiệm,gửi tiết kiệm,đầu tư,chứng khoán,cổ phiếu,vàng,quỹ,ccq'],
-  ['Khác', '📌', 500000, '']
+  ['Ăn uống', '🍜', 4000000, 'ăn,phở,bún,cơm,mì,bánh mì,trưa,tối,sáng,cafe,cà phê,coffee,trà sữa,trà,nước,nhậu,bia,lẩu,nướng,highland,starbucks,phúc long,grabfood,shopeefood,đi chợ,siêu thị,winmart,bách hóa xanh,trái cây', KIND_SPEND],
+  ['Đi lại', '🛵', 1000000, 'grab,be,xanh sm,taxi,xăng,gửi xe,vé xe,xe buýt,bus,metro,máy bay,vé máy bay,rửa xe,sửa xe,thay nhớt,cầu đường', KIND_SPEND],
+  ['Nhà ở & Hóa đơn', '🏠', 6000000, 'tiền nhà,thuê nhà,điện,tiền điện,tiền nước,internet,wifi,cước,điện thoại,4g,gas,phí quản lý,chung cư', KIND_SPEND],
+  ['Mua sắm', '🛍️', 2000000, 'mua,quần,áo,giày,dép,túi,shopee,lazada,tiki,tiktok shop,đồ dùng,mỹ phẩm,cắt tóc', KIND_SPEND],
+  ['Sức khỏe', '💊', 500000, 'thuốc,khám,bệnh viện,phòng khám,nha khoa,gym,yoga,bảo hiểm,vitamin', KIND_SPEND],
+  ['Học tập', '📚', 500000, 'sách,khóa học,course,học phí,udemy,coursera,học', KIND_SPEND],
+  ['Giải trí', '🎬', 800000, 'phim,xem phim,cgv,netflix,spotify,youtube,game,karaoke,du lịch,khách sạn,vé xem', KIND_SPEND],
+  ['Gia đình & Hiếu hỉ', '🎁', 1000000, 'biếu,mừng,đám cưới,cưới,đám,sinh nhật,quà,gửi mẹ,gửi bố,gia đình,lì xì', KIND_SPEND],
+  ['Tiết kiệm & Đầu tư', '💰', 3000000, 'tiết kiệm,gửi tiết kiệm,đầu tư,chứng khoán,cổ phiếu,vàng,quỹ,ccq', KIND_SAVE],
+  ['Khác', '📌', 500000, '', KIND_SPEND]
 ];
 
 /* ============================ Web app & menu ============================ */
@@ -283,7 +289,19 @@ function setup() {
   let cat = ss.getSheetByName(SHEET_CAT);
   if (!cat) {
     cat = ss.insertSheet(SHEET_CAT);
-    cat.getRange(2, 1, DEFAULT_CATEGORIES.length, 4).setValues(DEFAULT_CATEGORIES);
+    cat.getRange(2, 1, DEFAULT_CATEGORIES.length, 5).setValues(DEFAULT_CATEGORIES);
+  }
+  // Nâng cấp sheet cũ (chưa có cột Loại): điền mặc định, danh mục tiết kiệm/đầu tư là "Để dành".
+  const nCat = cat.getLastRow() - 1;
+  if (nCat > 0) {
+    const r = cat.getRange(2, 1, nCat, 5), v = r.getValues();
+    let changed = false;
+    v.forEach(row => {
+      if (row[0] && row[4] !== KIND_SPEND && row[4] !== KIND_SAVE) {
+        row[4] = /tiết kiệm|đầu tư/i.test(String(row[0])) ? KIND_SAVE : KIND_SPEND; changed = true;
+      }
+    });
+    if (changed) r.setValues(v);
   }
   cat.getRange(1, 1, 1, CAT_HEADERS.length).setValues([CAT_HEADERS])
     .setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
@@ -356,13 +374,14 @@ function getCategories_() {
   const sh = sheet_(SHEET_CAT);
   const n = sh.getLastRow() - 1;
   if (n < 1) return [];
-  return sh.getRange(2, 1, n, 4).getValues()
+  return sh.getRange(2, 1, n, 5).getValues()
     .filter(r => String(r[0]).trim())
     .map(r => ({
       name: String(r[0]).trim(),
       icon: String(r[1] || '•'),
       budget: Number(r[2]) || 0,
-      keywords: String(r[3] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+      keywords: String(r[3] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
+      kind: String(r[4]).trim() === KIND_SAVE ? 'save' : 'spend'
     }));
 }
 
@@ -393,7 +412,7 @@ function sortTx_(list) {
 function getInitData() {
   const cats = getCategories_();
   return {
-    categories: cats.map(c => ({ name: c.name, icon: c.icon, budget: c.budget })),
+    categories: cats.map(c => ({ name: c.name, icon: c.icon, budget: c.budget, kind: c.kind })),
     methods: METHODS,
     defaultMethod: DEFAULT_METHOD,
     today: todayStr_(),
@@ -426,12 +445,14 @@ function getRecent(range) {
   else if (range === 'month') start = today.slice(0, 7) + '-01';
   else { range = '3d'; start = addDays_(today, -2); }
   const all = readTx_();
+  const isSave = saveNames_(getCategories_());
   const items = sortTx_(all.filter(t => t.date >= start && t.date <= today));
   return {
     range: range,
     start: start,
-    todayTotal: all.filter(t => t.date === today).reduce((s, t) => s + t.amount, 0),
-    total: items.reduce((s, t) => s + t.amount, 0),
+    todayTotal: all.filter(t => t.date === today && !isSave[t.category]).reduce((s, t) => s + t.amount, 0),
+    total: items.filter(t => !isSave[t.category]).reduce((s, t) => s + t.amount, 0),
+    saved: items.filter(t => isSave[t.category]).reduce((s, t) => s + t.amount, 0),
     items: items,
     quick: quickPicks_(all, today)
   };
@@ -461,9 +482,18 @@ function offBudget_(byCatMap) {
   return { total: cats.reduce((s, c) => s + c.amount, 0), categories: cats.map(c => ({ name: c.name, amount: c.amount })) };
 }
 
+/** Tên các danh mục loại "Để dành". */
+function saveNames_(cats) {
+  const m = {}; cats.forEach(c => { if (c.kind === 'save') m[c.name] = true; }); return m;
+}
+
 function getDashboard(month) {
-  const cats = getCategories_();
-  const all = readTx_();
+  const allCats = getCategories_();
+  const isSave = saveNames_(allCats);
+  const cats = allCats.filter(c => c.kind !== 'save');      // mọi số liệu "chi" chỉ tính danh mục Chi tiêu
+  const saveCats = allCats.filter(c => c.kind === 'save');
+  const allTx = readTx_();
+  const all = allTx.filter(t => !isSave[t.category]);
   const prev = prevMonth_(month);
   const cur = all.filter(t => t.date.slice(0, 7) === month);
   const prevTx = all.filter(t => t.date.slice(0, 7) === prev);
@@ -471,12 +501,24 @@ function getDashboard(month) {
   const prevTotal = prevTx.reduce((s, t) => s + t.amount, 0);
   const budget = cats.reduce((s, c) => s + c.budget, 0);
 
+  // Để dành trong tháng, so với mục tiêu (= "ngân sách" của danh mục Để dành)
+  const savedTx = allTx.filter(t => isSave[t.category] && t.date.slice(0, 7) === month);
+  const savings = {
+    total: savedTx.reduce((s, t) => s + t.amount, 0),
+    target: saveCats.reduce((s, c) => s + c.budget, 0),
+    categories: saveCats.map(c => ({
+      name: c.name, icon: c.icon, target: c.budget,
+      amount: savedTx.filter(t => t.category === c.name).reduce((s, t) => s + t.amount, 0)
+    })).filter(c => c.amount || c.target)
+  };
+
   const today = todayStr_();
   const days = daysInMonth_(month);
   const elapsed = month === today.slice(0, 7) ? Number(today.slice(8, 10)) : (month < today.slice(0, 7) ? days : 0);
 
   const byCatMap = {};
   cats.forEach(c => { byCatMap[c.name] = { name: c.name, icon: c.icon, budget: c.budget, amount: 0, prev: 0, count: 0 }; });
+  // (danh mục Để dành không có trong byCatMap vì giao dịch của chúng đã được lọc khỏi "all")
   const ensure = name => byCatMap[name] || (byCatMap[name] = { name: name, icon: '•', budget: 0, amount: 0, prev: 0, count: 0 });
   cur.forEach(t => { const c = ensure(t.category); c.amount += t.amount; c.count++; });
   prevTx.forEach(t => { ensure(t.category).prev += t.amount; });
@@ -515,7 +557,8 @@ function getDashboard(month) {
     dailyRoutine: dailyRoutine,           // chỉ chi thường ngày, để biểu đồ không bị khoản lớn lấn át
     bigItems: { count: big.length, total: big.reduce((s, t) => s + t.amount, 0), threshold: BIG_ITEM_THRESHOLD },
     top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
-    offBudget: offBudget_(byCatMap)
+    offBudget: offBudget_(byCatMap),
+    savings: savings
   };
 }
 
@@ -619,7 +662,7 @@ function getCategoryList() {
   const counts = {};
   readTx_().forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1; });
   return getCategories_().map(c => ({
-    name: c.name, icon: c.icon, budget: c.budget,
+    name: c.name, icon: c.icon, budget: c.budget, kind: c.kind,
     keywords: c.keywords.join(', '), count: counts[c.name] || 0
   }));
 }
@@ -633,6 +676,10 @@ function saveCategory(c) {
   const budget = Math.max(0, Math.round(Number(c.budget) || 0));
   const keywords = String(c.keywords || '').split(',').map(k => k.trim().toLowerCase()).filter(Boolean).join(', ');
   const oldName = String(c.oldName || '').trim();
+  const kind = c.kind === 'save' ? KIND_SAVE : KIND_SPEND;
+  if (kind === KIND_SAVE && (name === FALLBACK_CATEGORY || oldName === FALLBACK_CATEGORY)) {
+    throw new Error('Danh mục "' + FALLBACK_CATEGORY + '" phải là loại Chi tiêu.');
+  }
 
   return withLock_(() => {
     const sh = sheet_(SHEET_CAT);
@@ -642,7 +689,7 @@ function saveCategory(c) {
 
     if (!oldName) {
       if (dup >= 0) throw new Error('Đã có danh mục "' + names[dup] + '".');
-      sh.getRange(n + 2, 1, 1, 4).setValues([[name, icon, budget, keywords]]);
+      sh.getRange(n + 2, 1, 1, 5).setValues([[name, icon, budget, keywords, kind]]);
       return { name: name, created: true };
     }
     const idx = names.indexOf(oldName);
@@ -651,7 +698,7 @@ function saveCategory(c) {
     if (oldName === FALLBACK_CATEGORY && name !== FALLBACK_CATEGORY) {
       throw new Error('Không đổi tên được danh mục "' + FALLBACK_CATEGORY + '" vì app dùng nó cho khoản chưa rõ danh mục.');
     }
-    sh.getRange(idx + 2, 1, 1, 4).setValues([[name, icon, budget, keywords]]);
+    sh.getRange(idx + 2, 1, 1, 5).setValues([[name, icon, budget, keywords, kind]]);
     const moved = name !== oldName ? renameTxCategory_(oldName, name) : 0;
     return { name: name, renamed: moved };
   });
@@ -939,13 +986,15 @@ function monthlyReview(month) {
     theo_danh_muc: d.byCategory.map(c => ({ danh_muc: c.name, chi: c.amount, ngan_sach: c.budget, thang_truoc: c.prev, so_giao_dich: c.count })),
     khoan_lon_nhat: d.top.map(t => ({ ngay: t.date, so_tien: t.amount, danh_muc: t.category, mo_ta: t.description })),
     chi_theo_ngay: d.daily,
-    chi_ngoai_ngan_sach: d.offBudget
+    chi_ngoai_ngan_sach: d.offBudget,
+    de_danh: d.savings
   };
   try {
     return callAI_({
       effort: 'medium',
       system: 'Bạn là cố vấn tài chính cá nhân, thực dụng, nói thẳng. Viết tiếng Việt, xưng "bạn". ' +
         'Dựa hoàn toàn vào số liệu được cung cấp, không bịa thêm. Định dạng tiền kiểu 1.250.000đ. ' +
+        'Lưu ý: tong_chi KHÔNG gồm tiền để dành (de_danh: tiết kiệm/đầu tư so với mục tiêu); để dành là điểm tích cực, không phải chi tiêu. ' +
         'Trả lời đúng cấu trúc Markdown sau, tổng dưới 250 từ:\n' +
         '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và so với CÙNG KỲ tháng trước (cung_ky_thang_truoc), dự báo cuối tháng nếu tháng chưa hết)\n' +
         '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, chi ngoài ngân sách (chi_ngoai_ngan_sach) nếu có, thay đổi lớn, khoản bất thường)\n' +
@@ -964,6 +1013,10 @@ function localReview_(d) {
     (d.prevSamePeriod ? ' So với cùng kỳ tháng trước (ngày 1–' + d.daysElapsed + '): ' + (d.total >= d.prevSamePeriod ? '+' : '') +
       Math.round((d.total - d.prevSamePeriod) / d.prevSamePeriod * 100) + '%.' : '') +
     (d.daysElapsed < d.daysInMonth ? ' Dự báo cuối tháng: ' + f(d.forecast) + '.' : ''));
+  if (d.savings && (d.savings.total || d.savings.target)) {
+    lines.push('Để dành **' + f(d.savings.total) + '**' + (d.savings.target ? ' / mục tiêu ' + f(d.savings.target) +
+      ' (' + Math.round(d.savings.total / d.savings.target * 100) + '%)' : '') + ', không tính vào tổng chi.');
+  }
   lines.push('## Điểm đáng chú ý');
   if (d.offBudget && d.offBudget.total) {
     lines.push('- Chi ngoài ngân sách **' + f(d.offBudget.total) + '** ở ' + d.offBudget.categories.length + ' danh mục (' +
@@ -1034,7 +1087,7 @@ function removeDemoData() {
     sheets = {}; try { localStorage.removeItem(MOCK_KEY); } catch (e) {}
     setup(); seedDemoData(); persist();
   }
-  if (!restore()) reset();
+  if (!restore()) reset(); else setup(); // setup an toàn khi chạy lại: nâng cấp dữ liệu cũ (vd thêm cột Loại)
   return { getInitData, getTransactions, getRecent, getDashboard, addTransactions, updateTransaction, deleteTransaction, deleteTransactions, saveBudgets, getCategoryList, saveCategory, deleteCategory, parseInput, monthlyReview, reset };
 })();
 
@@ -1140,7 +1193,7 @@ window.google = { script: { get run() {
       <div class="muted" id="budgetStatus" style="margin-top:8px"></div>
       <div id="budgetList"></div>
       <div class="row" style="margin-top:12px">
-        <span class="grow muted">Tổng ngân sách: <b id="budgetTotal" class="num"></b></span>
+        <span class="grow muted">Tổng ngân sách chi: <b id="budgetTotal" class="num"></b></span>
         <span class="muted">Tự lưu khi nhập xong</span>
       </div>
     </div>
@@ -1245,6 +1298,9 @@ const vnd = n => Math.round(n || 0).toLocaleString('vi-VN') + 'đ';
 const short = n => n >= 1e6 ? (n / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'tr' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
 const digits = s => Number(String(s).replace(/\D/g, '')) || 0;
 const icon = name => esc((S.cats[name] && S.cats[name].icon) || '•');
+const isSave = name => !!(S.cats[name] && S.cats[name].kind === 'save');
+/** Tổng tách 2 phần: chi tiêu và để dành. */
+const splitSum = list => list.reduce((a, t) => { a[isSave(t.category) ? 'save' : 'spend'] += t.amount; return a; }, { spend: 0, save: 0 });
 const ymLabel = ym => 'Tháng ' + Number(ym.slice(5)) + '/' + ym.slice(0, 4);
 const dLabel = ymd => {
   const t = S.init.today;
@@ -1414,7 +1470,7 @@ function renderRecent(r) {
     if (r.range !== recentRange) return; // bỏ kết quả cũ nếu người dùng đã chọn khoảng khác
     renderQuick(r.quick);
     const from = r.start.slice(8) + '/' + r.start.slice(5, 7);
-    $('recentSummary').innerHTML = RANGE_LABEL[r.range] + ' (từ ' + from + '): ' + r.items.length + ' khoản · <b class="num">' + vnd(r.total) + '</b>';
+    $('recentSummary').innerHTML = RANGE_LABEL[r.range] + ' (từ ' + from + '): ' + sumText(r.items);
     $('recent').innerHTML = r.items.length ? groupByDay(r.items)
       : '<div class="empty">Không có khoản nào trong ' + RANGE_LABEL[r.range].toLowerCase() + '. Ghi khoản đầu tiên ở trên nhé.</div>';
     bindTx($('recent'), r.items);
@@ -1423,17 +1479,24 @@ function renderRecent(r) {
 /** Danh sách đã sắp xếp mới → cũ, gom theo ngày, mỗi ngày có tổng tiền. */
 function groupByDay(list) {
   const groups = {}; list.forEach(t => (groups[t.date] = groups[t.date] || []).push(t));
-  return Object.keys(groups).map(d =>
-    `<div class="day-h"><span>${dLabel(d)} · ${groups[d].length} khoản</span><span class="num">${vnd(groups[d].reduce((s, t) => s + t.amount, 0))}</span></div>` +
-    groups[d].map(t => txRow(t, true)).join('')).join('');
+  return Object.keys(groups).map(d => {
+    const sum = splitSum(groups[d]);
+    return `<div class="day-h"><span>${dLabel(d)} · ${groups[d].length} khoản</span><span class="num">${vnd(sum.spend)}${sum.save ? ' · để dành ' + short(sum.save) : ''}</span></div>` +
+    groups[d].map(t => txRow(t, true)).join('');
+  }).join('');
+}
+/** "7 khoản · chi 1.268.000đ · để dành 3.000.000đ" */
+function sumText(list) {
+  const sum = splitSum(list);
+  return list.length + ' khoản · chi <b class="num">' + vnd(sum.spend) + '</b>' + (sum.save ? ' · để dành <b class="num">' + vnd(sum.save) + '</b>' : '');
 }
 
 function txRow(t, hideDate) {
   return `<div class="tx" data-id="${esc(t.id)}">
     <div class="ic">${icon(t.category)}</div>
     <div class="grow"><div>${esc(t.description || t.category)}</div>
-      <div class="muted">${esc(t.category)}${hideDate ? '' : ' · ' + dLabel(t.date)} · ${esc(t.method)}</div></div>
-    <div class="amt num">${vnd(t.amount)}</div></div>`;
+      <div class="muted">${isSave(t.category) ? '<span class="pill save">Để dành</span> ' : ''}${esc(t.category)}${hideDate ? '' : ' · ' + dLabel(t.date)} · ${esc(t.method)}</div></div>
+    <div class="amt num${isSave(t.category) ? ' save' : ''}">${vnd(t.amount)}</div></div>`;
 }
 function bindTx(container, list) {
   container.querySelectorAll('.tx').forEach(el => el.onclick = () => openEdit(list.find(t => t.id === el.dataset.id)));
@@ -1528,11 +1591,25 @@ function renderDash(d) {
   let html = '<div class="kpis">' +
     kpi('Tổng chi', vnd(d.total), d.count + ' giao dịch') +
     kpi('Ngân sách còn', vnd(remain), Math.round(pctBudget) + '% đã dùng', remain < 0 ? 'up' : '') +
-    kpi(fullMonth ? 'So tháng trước' : 'So cùng kỳ tháng trước', delta == null ? '—' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
-        (fullMonth ? 'Tháng trước ' : 'Ngày 1–' + d.daysElapsed + ': ') + short(d.prevSamePeriod), delta == null ? '' : delta > 0 ? 'up' : 'down') +
+    kpi(fullMonth ? 'So tháng trước' : 'So cùng kỳ tháng trước',
+        delta == null ? '—' : Math.abs(delta) < 0.5 ? '≈ 0%' : (delta > 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
+        (fullMonth ? 'Tháng trước ' : 'Ngày 1–' + d.daysElapsed + ': ') + short(d.prevSamePeriod),
+        delta == null || Math.abs(delta) < 0.5 ? '' : delta > 0 ? 'up' : 'down') +
     kpi('Chi thường / ngày', vnd(d.avgPerDay), d.daysElapsed && d.daysElapsed < d.daysInMonth ? 'Dự báo ' + short(d.forecast) : d.daysElapsed + ' ngày') +
     '</div>';
 
+  const sv = d.savings;
+  if (sv && (sv.total || sv.target)) {
+    const pct = sv.target ? Math.round(sv.total / sv.target * 100) : 0;
+    html += `<div class="card"><div class="row">
+        <h2 class="grow" style="margin:0">💰 Để dành</h2>
+        <span class="num"><b>${vnd(sv.total)}</b>${sv.target ? ' <span class="muted">/ mục tiêu ' + short(sv.target) + '</span>' : ''}</span></div>
+      ${sv.target ? `<div class="bar"><i style="width:${Math.min(100, pct)}%"></i></div>
+        <div class="muted" style="margin-top:6px">${pct >= 100 ? 'Đã đạt mục tiêu ✓' : 'Còn ' + vnd(sv.target - sv.total) + ' để đạt mục tiêu (' + pct + '%)'}. Không tính vào tổng chi.</div>`
+        : '<div class="muted" style="margin-top:6px">Chưa đặt mục tiêu. Không tính vào tổng chi.</div>'}
+      ${sv.categories.length > 1 ? sv.categories.map(c => `<div class="row muted" style="margin-top:4px"><span class="grow">${esc(c.icon)} ${esc(c.name)}</span><span class="num">${vnd(c.amount)}${c.target ? ' / ' + short(c.target) : ''}</span></div>`).join('') : ''}
+    </div>`;
+  }
   if (d.offBudget && d.offBudget.total) {
     const ob = d.offBudget, names = ob.categories.map(c => esc(c.name) + ' ' + short(c.amount)).join(', ');
     html += `<div class="card row" style="border-color:var(--warn);align-items:flex-start">
@@ -1667,8 +1744,7 @@ async function loadHistory() {
   } catch (e) { fail(e); }
 }
 function renderHistory(list, period) {
-    const total = list.reduce((s, t) => s + t.amount, 0);
-    $('hSummary').innerHTML = esc(period) + ': ' + list.length + ' khoản · <b class="num">' + vnd(total) + '</b>';
+    $('hSummary').innerHTML = esc(period) + ': ' + sumText(list);
     if (!list.length) { $('hist').innerHTML = '<div class="empty">Không có giao dịch phù hợp</div>'; return; }
     $('hist').innerHTML = groupByDay(list);
     bindTx($('hist'), list);
@@ -1722,8 +1798,8 @@ async function renderBudgets() {
       $('budgetList').innerHTML = S.catList.map((c, i) => `
         <div class="cat-row row click" onclick="if(event.target.tagName!=='INPUT')openCategory(${i})">
           <span>${esc(c.icon)}</span>
-          <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${statusPill(c.budget)}</small></span>
-          <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" aria-label="Ngân sách ${esc(c.name)}"
+          <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${c.kind === 'save' ? '<span class="pill save">Để dành · mục tiêu</span>' : statusPill(c.budget)}</small></span>
+          <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" data-kind="${c.kind}" aria-label="${c.kind === 'save' ? 'Mục tiêu để dành' : 'Ngân sách'} ${esc(c.name)}"
             value="${c.budget.toLocaleString('vi-VN')}" data-saved="${c.budget}" onblur="fmtInput(this)" oninput="updBudgetTotal()" onchange="saveOneBudget(this)">
           <button class="ghost" style="min-width:44px" title="Sửa danh mục" aria-label="Sửa ${esc(c.name)}">✏️</button></div>`).join('');
       updBudgetTotal();
@@ -1746,14 +1822,18 @@ function statusPill(budget) {
   return budget > 0 ? '<span class="pill ok">Đã duyệt</span>' : '<span class="pill off">Ngoài ngân sách</span>';
 }
 function updBudgetTotal() {
-  const inputs = Array.from($('budgetList').querySelectorAll('input'));
+  const all = Array.from($('budgetList').querySelectorAll('input'));
+  const inputs = all.filter(el => el.dataset.kind !== 'save');
+  const saves = all.filter(el => el.dataset.kind === 'save');
   let approved = 0;
   inputs.forEach(el => {
     const b = digits(el.value); if (b > 0) approved++;
     const pill = el.closest('.cat-row').querySelector('.pill');
     if (pill) pill.outerHTML = statusPill(b); // đổi trạng thái ngay khi gõ hạn mức
   });
-  $('budgetTotal').textContent = vnd(inputs.reduce((s, el) => s + digits(el.value), 0));
+  const saveTotal = saves.reduce((s, el) => s + digits(el.value), 0);
+  $('budgetTotal').innerHTML = vnd(inputs.reduce((s, el) => s + digits(el.value), 0)) +
+    (saves.length ? '</b><br>Mục tiêu để dành: <b class="num">' + vnd(saveTotal) : '');
   $('budgetStatus').innerHTML = statusPill(1) + ' ' + approved + ' danh mục &nbsp; ' + statusPill(0) + ' ' + (inputs.length - approved) +
     ' danh mục · Nhập hạn mức > 0 để duyệt.';
 }
@@ -1769,7 +1849,7 @@ async function refreshInit() {
 const ICONS = ['🍜', '☕', '🛵', '🚗', '🏠', '💡', '🛍️', '💄', '💊', '🏋️', '📚', '🎓', '🎬', '✈️', '🎁', '👶', '🐶', '💼', '📱', '💰', '❤️', '🧾', '📌'];
 
 function openCategory(i) {
-  const c = i == null ? { name: '', icon: '📌', budget: 0, keywords: '', count: 0 } : S.catList[i];
+  const c = i == null ? { name: '', icon: '📌', budget: 0, keywords: '', count: 0, kind: 'spend' } : S.catList[i];
   const isNew = i == null, isFallback = c.name === 'Khác';
   S.editingCat = c;
   openModal(`<h2>${isNew ? 'Thêm danh mục' : 'Sửa danh mục'}</h2>
@@ -1780,7 +1860,13 @@ function openCategory(i) {
       <input id="cIcon" value="${esc(c.icon)}" style="max-width:64px;text-align:center;font-size:20px" maxlength="8">
       <div class="icon-pick grow">${ICONS.map(x => `<button type="button" onclick="$('cIcon').value='${x}'">${x}</button>`).join('')}</div>
     </div>
-    <label for="cBudget">Ngân sách tháng (đ)</label>
+    ${isFallback ? '' : `<label>Loại</label>
+    <div class="range two" id="cKind" style="margin:0">
+      <button type="button" data-k="spend" class="${c.kind !== 'save' ? 'on' : ''}" onclick="setKind('spend')">Chi tiêu</button>
+      <button type="button" data-k="save" class="${c.kind === 'save' ? 'on' : ''}" onclick="setKind('save')">Để dành</button>
+    </div>
+    <div class="muted" id="cKindHint" style="margin-top:4px"></div>`}
+    <label for="cBudget" id="cBudgetLabel">Ngân sách tháng (đ)</label>
     <input id="cBudget" class="num" inputmode="numeric" value="${c.budget ? c.budget.toLocaleString('vi-VN') : ''}" onblur="fmtInput(this)" placeholder="0">
     <label for="cKw">Từ khóa nhận diện</label>
     <textarea id="cKw" style="min-height:64px" placeholder="Cách nhau bằng dấu phẩy, ví dụ: gym, yoga, bơi">${esc(c.keywords)}</textarea>
@@ -1792,12 +1878,23 @@ function openCategory(i) {
       <span class="grow"></span><button class="ghost" onclick="closeModal()">Hủy</button>
       <button class="primary" id="btnCat" onclick="saveCategoryForm()">${isNew ? 'Thêm' : 'Lưu'}</button>
     </div>`);
+  S.editingKind = c.kind || 'spend';
+  if (!isFallback) setKind(S.editingKind);
   if (isNew) setTimeout(() => $('cName').focus(), 50);
+}
+function setKind(k) {
+  S.editingKind = k;
+  $('cKind').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  $('cBudgetLabel').textContent = k === 'save' ? 'Mục tiêu để dành mỗi tháng (đ)' : 'Ngân sách tháng (đ)';
+  $('cKindHint').textContent = k === 'save'
+    ? 'Tiền chuyển vào tiết kiệm, đầu tư… Không tính vào tổng chi, theo dõi riêng so với mục tiêu.'
+    : 'Tính vào tổng chi và ngân sách chi tiêu.';
 }
 
 async function saveCategoryForm() {
   const c = S.editingCat;
-  const data = { oldName: c.name, name: $('cName').value, icon: $('cIcon').value, budget: digits($('cBudget').value), keywords: $('cKw').value };
+  const data = { oldName: c.name, name: $('cName').value, icon: $('cIcon').value, budget: digits($('cBudget').value), keywords: $('cKw').value,
+    kind: c.name === 'Khác' ? 'spend' : S.editingKind };
   if (!data.name.trim()) { toast('Hãy nhập tên danh mục'); $('cName').focus(); return; }
   const btn = $('btnCat'); busy(btn, true);
   try {

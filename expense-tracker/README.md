@@ -79,9 +79,12 @@ Nếu AI lỗi (hết hạn mức, hết credit, mất mạng…), app tự chuy
 
 **Sheet `DanhMuc`**: thêm/đổi tên danh mục, icon, ngân sách, **từ khóa nhận diện** ngay trên Sheet, app tự cập nhật.
 
-| Danh mục | Icon | Ngân sách tháng | Từ khóa |
-|---|---|---|---|
-| Ăn uống | 🍜 | 4.000.000 | ăn, phở, cafe, trà sữa, siêu thị… |
+| Danh mục | Icon | Ngân sách tháng | Từ khóa | Loại |
+|---|---|---|---|---|
+| Ăn uống | 🍜 | 4.000.000 | ăn, phở, cafe, trà sữa, siêu thị… | Chi tiêu |
+| Tiết kiệm & Đầu tư | 💰 | 3.000.000 (mục tiêu) | tiết kiệm, đầu tư, vàng… | Để dành |
+
+**Loại** = `Chi tiêu` (tính vào tổng chi và ngân sách) hoặc `Để dành` (tiết kiệm/đầu tư: không tính vào tổng chi, theo dõi riêng so với mục tiêu). Đã có Sheet từ bản cũ thì chạy lại **💰 Chi tiêu → Khởi tạo** để thêm cột này.
 
 Mẹo: bộ tách offline chọn danh mục theo **từ khóa khớp dài nhất**. Ví dụ `mua cafe` → Ăn uống (`cafe` dài hơn `mua`). Gặp khoản bị xếp sai, chỉ cần thêm từ khóa vào sheet `DanhMuc`.
 

@@ -118,6 +118,8 @@
   .pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
   .pill.off { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
   .bar > i.off { background: var(--muted); opacity: .45; }
+  .pill.save { color: var(--brand); background: var(--brand-soft); }
+  .amt.save { color: var(--brand); }
   .icon-pick { display: flex; gap: 4px; flex-wrap: wrap; }
   .icon-pick button { min-height: 40px; min-width: 40px; padding: 4px 6px; font-size: 18px; background: transparent; }
   .icon-pick button:hover { background: var(--bg); }
@@ -219,7 +221,7 @@
       <div class="muted" id="budgetStatus" style="margin-top:8px"></div>
       <div id="budgetList"></div>
       <div class="row" style="margin-top:12px">
-        <span class="grow muted">Tổng ngân sách: <b id="budgetTotal" class="num"></b></span>
+        <span class="grow muted">Tổng ngân sách chi: <b id="budgetTotal" class="num"></b></span>
         <span class="muted">Tự lưu khi nhập xong</span>
       </div>
     </div>
@@ -269,6 +271,9 @@ const vnd = n => Math.round(n || 0).toLocaleString('vi-VN') + 'đ';
 const short = n => n >= 1e6 ? (n / 1e6).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + 'tr' : n >= 1e3 ? Math.round(n / 1e3) + 'k' : String(n);
 const digits = s => Number(String(s).replace(/\D/g, '')) || 0;
 const icon = name => esc((S.cats[name] && S.cats[name].icon) || '•');
+const isSave = name => !!(S.cats[name] && S.cats[name].kind === 'save');
+/** Tổng tách 2 phần: chi tiêu và để dành. */
+const splitSum = list => list.reduce((a, t) => { a[isSave(t.category) ? 'save' : 'spend'] += t.amount; return a; }, { spend: 0, save: 0 });
 const ymLabel = ym => 'Tháng ' + Number(ym.slice(5)) + '/' + ym.slice(0, 4);
 const dLabel = ymd => {
   const t = S.init.today;
@@ -438,7 +443,7 @@ function renderRecent(r) {
     if (r.range !== recentRange) return; // bỏ kết quả cũ nếu người dùng đã chọn khoảng khác
     renderQuick(r.quick);
     const from = r.start.slice(8) + '/' + r.start.slice(5, 7);
-    $('recentSummary').innerHTML = RANGE_LABEL[r.range] + ' (từ ' + from + '): ' + r.items.length + ' khoản · <b class="num">' + vnd(r.total) + '</b>';
+    $('recentSummary').innerHTML = RANGE_LABEL[r.range] + ' (từ ' + from + '): ' + sumText(r.items);
     $('recent').innerHTML = r.items.length ? groupByDay(r.items)
       : '<div class="empty">Không có khoản nào trong ' + RANGE_LABEL[r.range].toLowerCase() + '. Ghi khoản đầu tiên ở trên nhé.</div>';
     bindTx($('recent'), r.items);
@@ -447,17 +452,24 @@ function renderRecent(r) {
 /** Danh sách đã sắp xếp mới → cũ, gom theo ngày, mỗi ngày có tổng tiền. */
 function groupByDay(list) {
   const groups = {}; list.forEach(t => (groups[t.date] = groups[t.date] || []).push(t));
-  return Object.keys(groups).map(d =>
-    `<div class="day-h"><span>${dLabel(d)} · ${groups[d].length} khoản</span><span class="num">${vnd(groups[d].reduce((s, t) => s + t.amount, 0))}</span></div>` +
-    groups[d].map(t => txRow(t, true)).join('')).join('');
+  return Object.keys(groups).map(d => {
+    const sum = splitSum(groups[d]);
+    return `<div class="day-h"><span>${dLabel(d)} · ${groups[d].length} khoản</span><span class="num">${vnd(sum.spend)}${sum.save ? ' · để dành ' + short(sum.save) : ''}</span></div>` +
+    groups[d].map(t => txRow(t, true)).join('');
+  }).join('');
+}
+/** "7 khoản · chi 1.268.000đ · để dành 3.000.000đ" */
+function sumText(list) {
+  const sum = splitSum(list);
+  return list.length + ' khoản · chi <b class="num">' + vnd(sum.spend) + '</b>' + (sum.save ? ' · để dành <b class="num">' + vnd(sum.save) + '</b>' : '');
 }
 
 function txRow(t, hideDate) {
   return `<div class="tx" data-id="${esc(t.id)}">
     <div class="ic">${icon(t.category)}</div>
     <div class="grow"><div>${esc(t.description || t.category)}</div>
-      <div class="muted">${esc(t.category)}${hideDate ? '' : ' · ' + dLabel(t.date)} · ${esc(t.method)}</div></div>
-    <div class="amt num">${vnd(t.amount)}</div></div>`;
+      <div class="muted">${isSave(t.category) ? '<span class="pill save">Để dành</span> ' : ''}${esc(t.category)}${hideDate ? '' : ' · ' + dLabel(t.date)} · ${esc(t.method)}</div></div>
+    <div class="amt num${isSave(t.category) ? ' save' : ''}">${vnd(t.amount)}</div></div>`;
 }
 function bindTx(container, list) {
   container.querySelectorAll('.tx').forEach(el => el.onclick = () => openEdit(list.find(t => t.id === el.dataset.id)));
@@ -552,11 +564,25 @@ function renderDash(d) {
   let html = '<div class="kpis">' +
     kpi('Tổng chi', vnd(d.total), d.count + ' giao dịch') +
     kpi('Ngân sách còn', vnd(remain), Math.round(pctBudget) + '% đã dùng', remain < 0 ? 'up' : '') +
-    kpi(fullMonth ? 'So tháng trước' : 'So cùng kỳ tháng trước', delta == null ? '—' : (delta >= 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
-        (fullMonth ? 'Tháng trước ' : 'Ngày 1–' + d.daysElapsed + ': ') + short(d.prevSamePeriod), delta == null ? '' : delta > 0 ? 'up' : 'down') +
+    kpi(fullMonth ? 'So tháng trước' : 'So cùng kỳ tháng trước',
+        delta == null ? '—' : Math.abs(delta) < 0.5 ? '≈ 0%' : (delta > 0 ? '▲ ' : '▼ ') + Math.abs(Math.round(delta)) + '%',
+        (fullMonth ? 'Tháng trước ' : 'Ngày 1–' + d.daysElapsed + ': ') + short(d.prevSamePeriod),
+        delta == null || Math.abs(delta) < 0.5 ? '' : delta > 0 ? 'up' : 'down') +
     kpi('Chi thường / ngày', vnd(d.avgPerDay), d.daysElapsed && d.daysElapsed < d.daysInMonth ? 'Dự báo ' + short(d.forecast) : d.daysElapsed + ' ngày') +
     '</div>';
 
+  const sv = d.savings;
+  if (sv && (sv.total || sv.target)) {
+    const pct = sv.target ? Math.round(sv.total / sv.target * 100) : 0;
+    html += `<div class="card"><div class="row">
+        <h2 class="grow" style="margin:0">💰 Để dành</h2>
+        <span class="num"><b>${vnd(sv.total)}</b>${sv.target ? ' <span class="muted">/ mục tiêu ' + short(sv.target) + '</span>' : ''}</span></div>
+      ${sv.target ? `<div class="bar"><i style="width:${Math.min(100, pct)}%"></i></div>
+        <div class="muted" style="margin-top:6px">${pct >= 100 ? 'Đã đạt mục tiêu ✓' : 'Còn ' + vnd(sv.target - sv.total) + ' để đạt mục tiêu (' + pct + '%)'}. Không tính vào tổng chi.</div>`
+        : '<div class="muted" style="margin-top:6px">Chưa đặt mục tiêu. Không tính vào tổng chi.</div>'}
+      ${sv.categories.length > 1 ? sv.categories.map(c => `<div class="row muted" style="margin-top:4px"><span class="grow">${esc(c.icon)} ${esc(c.name)}</span><span class="num">${vnd(c.amount)}${c.target ? ' / ' + short(c.target) : ''}</span></div>`).join('') : ''}
+    </div>`;
+  }
   if (d.offBudget && d.offBudget.total) {
     const ob = d.offBudget, names = ob.categories.map(c => esc(c.name) + ' ' + short(c.amount)).join(', ');
     html += `<div class="card row" style="border-color:var(--warn);align-items:flex-start">
@@ -691,8 +717,7 @@ async function loadHistory() {
   } catch (e) { fail(e); }
 }
 function renderHistory(list, period) {
-    const total = list.reduce((s, t) => s + t.amount, 0);
-    $('hSummary').innerHTML = esc(period) + ': ' + list.length + ' khoản · <b class="num">' + vnd(total) + '</b>';
+    $('hSummary').innerHTML = esc(period) + ': ' + sumText(list);
     if (!list.length) { $('hist').innerHTML = '<div class="empty">Không có giao dịch phù hợp</div>'; return; }
     $('hist').innerHTML = groupByDay(list);
     bindTx($('hist'), list);
@@ -746,8 +771,8 @@ async function renderBudgets() {
       $('budgetList').innerHTML = S.catList.map((c, i) => `
         <div class="cat-row row click" onclick="if(event.target.tagName!=='INPUT')openCategory(${i})">
           <span>${esc(c.icon)}</span>
-          <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${statusPill(c.budget)}</small></span>
-          <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" aria-label="Ngân sách ${esc(c.name)}"
+          <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${c.kind === 'save' ? '<span class="pill save">Để dành · mục tiêu</span>' : statusPill(c.budget)}</small></span>
+          <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" data-kind="${c.kind}" aria-label="${c.kind === 'save' ? 'Mục tiêu để dành' : 'Ngân sách'} ${esc(c.name)}"
             value="${c.budget.toLocaleString('vi-VN')}" data-saved="${c.budget}" onblur="fmtInput(this)" oninput="updBudgetTotal()" onchange="saveOneBudget(this)">
           <button class="ghost" style="min-width:44px" title="Sửa danh mục" aria-label="Sửa ${esc(c.name)}">✏️</button></div>`).join('');
       updBudgetTotal();
@@ -770,14 +795,18 @@ function statusPill(budget) {
   return budget > 0 ? '<span class="pill ok">Đã duyệt</span>' : '<span class="pill off">Ngoài ngân sách</span>';
 }
 function updBudgetTotal() {
-  const inputs = Array.from($('budgetList').querySelectorAll('input'));
+  const all = Array.from($('budgetList').querySelectorAll('input'));
+  const inputs = all.filter(el => el.dataset.kind !== 'save');
+  const saves = all.filter(el => el.dataset.kind === 'save');
   let approved = 0;
   inputs.forEach(el => {
     const b = digits(el.value); if (b > 0) approved++;
     const pill = el.closest('.cat-row').querySelector('.pill');
     if (pill) pill.outerHTML = statusPill(b); // đổi trạng thái ngay khi gõ hạn mức
   });
-  $('budgetTotal').textContent = vnd(inputs.reduce((s, el) => s + digits(el.value), 0));
+  const saveTotal = saves.reduce((s, el) => s + digits(el.value), 0);
+  $('budgetTotal').innerHTML = vnd(inputs.reduce((s, el) => s + digits(el.value), 0)) +
+    (saves.length ? '</b><br>Mục tiêu để dành: <b class="num">' + vnd(saveTotal) : '');
   $('budgetStatus').innerHTML = statusPill(1) + ' ' + approved + ' danh mục &nbsp; ' + statusPill(0) + ' ' + (inputs.length - approved) +
     ' danh mục · Nhập hạn mức > 0 để duyệt.';
 }
@@ -793,7 +822,7 @@ async function refreshInit() {
 const ICONS = ['🍜', '☕', '🛵', '🚗', '🏠', '💡', '🛍️', '💄', '💊', '🏋️', '📚', '🎓', '🎬', '✈️', '🎁', '👶', '🐶', '💼', '📱', '💰', '❤️', '🧾', '📌'];
 
 function openCategory(i) {
-  const c = i == null ? { name: '', icon: '📌', budget: 0, keywords: '', count: 0 } : S.catList[i];
+  const c = i == null ? { name: '', icon: '📌', budget: 0, keywords: '', count: 0, kind: 'spend' } : S.catList[i];
   const isNew = i == null, isFallback = c.name === 'Khác';
   S.editingCat = c;
   openModal(`<h2>${isNew ? 'Thêm danh mục' : 'Sửa danh mục'}</h2>
@@ -804,7 +833,13 @@ function openCategory(i) {
       <input id="cIcon" value="${esc(c.icon)}" style="max-width:64px;text-align:center;font-size:20px" maxlength="8">
       <div class="icon-pick grow">${ICONS.map(x => `<button type="button" onclick="$('cIcon').value='${x}'">${x}</button>`).join('')}</div>
     </div>
-    <label for="cBudget">Ngân sách tháng (đ)</label>
+    ${isFallback ? '' : `<label>Loại</label>
+    <div class="range two" id="cKind" style="margin:0">
+      <button type="button" data-k="spend" class="${c.kind !== 'save' ? 'on' : ''}" onclick="setKind('spend')">Chi tiêu</button>
+      <button type="button" data-k="save" class="${c.kind === 'save' ? 'on' : ''}" onclick="setKind('save')">Để dành</button>
+    </div>
+    <div class="muted" id="cKindHint" style="margin-top:4px"></div>`}
+    <label for="cBudget" id="cBudgetLabel">Ngân sách tháng (đ)</label>
     <input id="cBudget" class="num" inputmode="numeric" value="${c.budget ? c.budget.toLocaleString('vi-VN') : ''}" onblur="fmtInput(this)" placeholder="0">
     <label for="cKw">Từ khóa nhận diện</label>
     <textarea id="cKw" style="min-height:64px" placeholder="Cách nhau bằng dấu phẩy, ví dụ: gym, yoga, bơi">${esc(c.keywords)}</textarea>
@@ -816,12 +851,23 @@ function openCategory(i) {
       <span class="grow"></span><button class="ghost" onclick="closeModal()">Hủy</button>
       <button class="primary" id="btnCat" onclick="saveCategoryForm()">${isNew ? 'Thêm' : 'Lưu'}</button>
     </div>`);
+  S.editingKind = c.kind || 'spend';
+  if (!isFallback) setKind(S.editingKind);
   if (isNew) setTimeout(() => $('cName').focus(), 50);
+}
+function setKind(k) {
+  S.editingKind = k;
+  $('cKind').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  $('cBudgetLabel').textContent = k === 'save' ? 'Mục tiêu để dành mỗi tháng (đ)' : 'Ngân sách tháng (đ)';
+  $('cKindHint').textContent = k === 'save'
+    ? 'Tiền chuyển vào tiết kiệm, đầu tư… Không tính vào tổng chi, theo dõi riêng so với mục tiêu.'
+    : 'Tính vào tổng chi và ngân sách chi tiêu.';
 }
 
 async function saveCategoryForm() {
   const c = S.editingCat;
-  const data = { oldName: c.name, name: $('cName').value, icon: $('cIcon').value, budget: digits($('cBudget').value), keywords: $('cKw').value };
+  const data = { oldName: c.name, name: $('cName').value, icon: $('cIcon').value, budget: digits($('cBudget').value), keywords: $('cKw').value,
+    kind: c.name === 'Khác' ? 'spend' : S.editingKind };
   if (!data.name.trim()) { toast('Hãy nhập tên danh mục'); $('cName').focus(); return; }
   const btn = $('btnCat'); busy(btn, true);
   try {
