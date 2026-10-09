@@ -86,6 +86,15 @@ Nếu AI lỗi (hết hạn mức, hết credit, mất mạng…), app tự chuy
 
 **Loại** = `Chi tiêu` (tính vào tổng chi và ngân sách) hoặc `Để dành` (tiết kiệm/đầu tư: không tính vào tổng chi, theo dõi riêng so với mục tiêu). Đã có Sheet từ bản cũ thì chạy lại **💰 Chi tiêu → Khởi tạo** để thêm cột này.
 
+**Sheet `NganSachThang`**: hạn mức **riêng từng tháng** (chỉ chứa các tháng có chỉnh khác mặc định). Tháng không có dòng nào sẽ dùng "Ngân sách tháng" mặc định ở `DanhMuc`.
+
+| Tháng (yyyy-MM) | Danh mục | Hạn mức |
+|---|---|---|
+| 2027-01 | Gia đình & Hiếu hỉ | 5.000.000 |
+
+- Trên app: tab **Ngân sách** → chọn tháng ở dải tháng (đặt trước được tối đa 12 tháng tới) → nhập hạn mức. Nút ↺ đưa về mặc định, nút **Dùng làm mặc định** áp dụng các số đã chỉnh cho các tháng sau.
+- Khi đổi hạn mức mặc định, app tự ghi lại hạn mức cũ cho các tháng đã qua, nên báo cáo tháng cũ không bị tính lại.
+
 Mẹo: bộ tách offline chọn danh mục theo **từ khóa khớp dài nhất**. Ví dụ `mua cafe` → Ăn uống (`cafe` dài hơn `mua`). Gặp khoản bị xếp sai, chỉ cần thêm từ khóa vào sheet `DanhMuc`.
 
 ---

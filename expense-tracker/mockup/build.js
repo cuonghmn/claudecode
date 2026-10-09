@@ -19,7 +19,7 @@ const style = between(index, '<style>', '</style>');
 const body = between(index, '<body>', '</body>');
 
 const API = ['getInitData', 'getTransactions', 'getRecent', 'getDashboard', 'getMonthTotals', 'addTransactions',
-  'updateTransaction', 'deleteTransaction', 'deleteTransactions', 'saveBudgets', 'getCategoryList', 'saveCategory', 'deleteCategory', 'parseInput', 'monthlyReview'];
+  'updateTransaction', 'deleteTransaction', 'deleteTransactions', 'saveBudgets', 'setMonthBudget', 'applyMonthAsDefault', 'getCategoryList', 'saveCategory', 'deleteCategory', 'parseInput', 'monthlyReview'];
 
 const mockStyle = `
   .mock-bar { max-width: 720px; margin: 0 auto; padding: 10px 16px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

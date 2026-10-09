@@ -15,6 +15,8 @@
 
 const SHEET_TX = 'GiaoDich';
 const SHEET_CAT = 'DanhMuc';
+const SHEET_BUD = 'NganSachThang'; // hạn mức riêng từng tháng (chỉ các tháng có chỉnh khác mặc định)
+const BUD_HEADERS = ['Tháng (yyyy-MM)', 'Danh mục', 'Hạn mức'];
 const TX_HEADERS = ['ID', 'Ngày', 'Số tiền', 'Danh mục', 'Mô tả', 'Phương thức', 'Ghi chú', 'Tạo lúc'];
 const CAT_HEADERS = ['Danh mục', 'Icon', 'Ngân sách tháng', 'Từ khóa (cách nhau bởi dấu phẩy)', 'Loại'];
 // Loại danh mục: "Chi tiêu" tính vào tổng chi; "Để dành" (tiết kiệm, đầu tư…) là phân bổ tiền,
@@ -100,6 +102,13 @@ function setup() {
   cat.getRange('C:C').setNumberFormat('#,##0');
   cat.setColumnWidth(4, 480);
 
+  const bud = budSheet_();
+  bud.getRange(1, 1, 1, BUD_HEADERS.length).setValues([BUD_HEADERS])
+    .setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
+  bud.setFrozenRows(1);
+  bud.getRange('A:A').setNumberFormat('@');
+  bud.getRange('C:C').setNumberFormat('#,##0');
+
   const sheet1 = ss.getSheetByName('Sheet1') || ss.getSheetByName('Trang tính1');
   if (sheet1 && sheet1.getLastRow() === 0 && ss.getSheets().length > 2) ss.deleteSheet(sheet1);
   return 'OK';
@@ -174,6 +183,117 @@ function getCategories_() {
       keywords: String(r[3] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
       kind: String(r[4]).trim() === KIND_SAVE ? 'save' : 'spend'
     }));
+}
+
+/* ---------- Ngân sách theo tháng: mặc định (DanhMuc) + chỉnh riêng (NganSachThang) ---------- */
+
+function budSheet_() {
+  const ss = ss_();
+  let sh = ss.getSheetByName(SHEET_BUD);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_BUD);
+    sh.getRange(1, 1, 1, BUD_HEADERS.length).setValues([BUD_HEADERS]);
+    sh.getRange('A:A').setNumberFormat('@');
+  }
+  return sh;
+}
+
+function ymOf_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, tz_(), 'yyyy-MM');
+  const m = String(v || '').trim().match(/^(\d{4})-(\d{1,2})/);
+  return m ? m[1] + '-' + ('0' + m[2]).slice(-2) : '';
+}
+
+/** { 'yyyy-MM': { 'Danh mục': hạn mức } } */
+function readOverrides_() {
+  const sh = budSheet_();
+  const n = sh.getLastRow() - 1;
+  const map = {};
+  if (n < 1) return map;
+  sh.getRange(2, 1, n, 3).getValues().forEach(r => {
+    const ym = ymOf_(r[0]), c = String(r[1] || '').trim();
+    if (ym && c) (map[ym] = map[ym] || {})[c] = Math.max(0, Math.round(Number(r[2]) || 0));
+  });
+  return map;
+}
+
+function writeOverrides_(map) {
+  const sh = budSheet_();
+  const rows = [];
+  Object.keys(map).sort().forEach(ym => Object.keys(map[ym]).sort().forEach(c => rows.push([ym, c, map[ym][c]])));
+  const n = sh.getLastRow() - 1;
+  if (n > 0) sh.getRange(2, 1, n, 3).clearContent();
+  if (rows.length) {
+    sh.getRange(2, 1, rows.length, 1).setNumberFormat('@');
+    sh.getRange(2, 1, rows.length, 3).setValues(rows);
+  }
+}
+
+/** Danh mục với hạn mức áp dụng cho tháng ym: budget = hạn mức của tháng, defaultBudget = mặc định. */
+function budgetsFor_(cats, ov, ym) {
+  const m = ov[ym] || {};
+  return cats.map(c => Object.assign({}, c, {
+    defaultBudget: c.budget,
+    budget: c.name in m ? m[c.name] : c.budget,
+    overridden: c.name in m
+  }));
+}
+
+/**
+ * Trước khi đổi hạn mức MẶC ĐỊNH (áp dụng từ tháng fromYm): ghi hạn mức cũ vào các tháng trước đó
+ * (từ tháng có giao dịch sớm nhất) chưa có chỉnh riêng — để số liệu lịch sử không bị tính lại.
+ */
+function preserveHistory_(ov, name, oldBudget, fromYm) {
+  let first = '';
+  readTx_().forEach(t => { const ym = t.date.slice(0, 7); if (!first || ym < first) first = ym; });
+  if (!first) return;
+  for (let ym = prevMonth_(fromYm); ym >= first; ym = prevMonth_(ym)) {
+    if (!(ov[ym] && name in ov[ym])) (ov[ym] = ov[ym] || {})[name] = oldBudget;
+  }
+}
+
+function setDefaultBudget_(name, budget) {
+  const sh = sheet_(SHEET_CAT);
+  const n = sh.getLastRow() - 1;
+  const names = sh.getRange(2, 1, n, 1).getValues().map(r => String(r[0]).trim());
+  const idx = names.indexOf(name);
+  if (idx >= 0) sh.getRange(idx + 2, 3, 1, 1).setValues([[budget]]);
+}
+
+/** Đặt hạn mức riêng cho 1 danh mục trong 1 tháng. Bằng mặc định thì bỏ phần chỉnh riêng. */
+function setMonthBudget(month, name, amount) {
+  month = ymOf_(month);
+  if (!month) throw new Error('Tháng không hợp lệ.');
+  amount = Math.max(0, Math.round(Number(amount) || 0));
+  return withLock_(() => {
+    const cat = getCategories_().filter(c => c.name === name)[0];
+    if (!cat) throw new Error('Không tìm thấy danh mục "' + name + '".');
+    const ov = readOverrides_();
+    if (amount === cat.budget) { if (ov[month]) delete ov[month][name]; }
+    else (ov[month] = ov[month] || {})[name] = amount;
+    writeOverrides_(ov);
+    return { name: name, budget: amount, defaultBudget: cat.budget, overridden: amount !== cat.budget };
+  });
+}
+
+/** "Dùng cho các tháng sau": các hạn mức chỉnh riêng của tháng này thành mặc định mới (từ tháng này trở đi). */
+function applyMonthAsDefault(month) {
+  month = ymOf_(month);
+  return withLock_(() => {
+    const ov = readOverrides_();
+    const m = ov[month] || {};
+    const cats = getCategories_();
+    let k = 0;
+    Object.keys(m).forEach(name => {
+      const cat = cats.filter(c => c.name === name)[0];
+      if (!cat) return;
+      preserveHistory_(ov, name, cat.budget, month);
+      setDefaultBudget_(name, m[name]);
+      delete m[name]; k++;
+    });
+    writeOverrides_(ov);
+    return k;
+  });
 }
 
 function readTx_() {
@@ -304,7 +424,7 @@ function saveNames_(cats) {
 }
 
 function getDashboard(month) {
-  const allCats = getCategories_();
+  const allCats = budgetsFor_(getCategories_(), readOverrides_(), month); // hạn mức của đúng tháng đang xem
   const isSave = saveNames_(allCats);
   const cats = allCats.filter(c => c.kind !== 'save');      // mọi số liệu "chi" chỉ tính danh mục Chi tiêu
   const saveCats = allCats.filter(c => c.kind === 'save');
@@ -456,6 +576,7 @@ function deleteTransactions(ids) {
   });
 }
 
+/** Đổi hạn mức MẶC ĐỊNH (áp dụng từ tháng này); các tháng trước giữ nguyên hạn mức cũ. */
 function saveBudgets(list) {
   return withLock_(() => {
     const sh = sheet_(SHEET_CAT);
@@ -464,8 +585,15 @@ function saveBudgets(list) {
     const names = sh.getRange(2, 1, n, 1).getValues().map(r => String(r[0]).trim());
     const map = {};
     list.forEach(b => { map[b.name] = Math.max(0, Math.round(Number(b.budget) || 0)); });
-    const vals = sh.getRange(2, 3, n, 1).getValues().map((r, i) => [names[i] in map ? map[names[i]] : r[0]]);
+    const cur = todayStr_().slice(0, 7), ov = readOverrides_();
+    const old = sh.getRange(2, 3, n, 1).getValues();
+    const vals = old.map((r, i) => {
+      if (!(names[i] in map)) return [r[0]];
+      if ((Number(r[0]) || 0) !== map[names[i]]) preserveHistory_(ov, names[i], Number(r[0]) || 0, cur);
+      return [map[names[i]]];
+    });
     sh.getRange(2, 3, n, 1).setValues(vals);
+    writeOverrides_(ov);
     return Object.keys(map).length;
   });
 }
@@ -475,11 +603,13 @@ function saveBudgets(list) {
 const FALLBACK_CATEGORY = 'Khác'; // khoản không rõ danh mục sẽ vào đây, nên không cho xóa/đổi tên
 
 /** Danh mục kèm từ khóa và số khoản chi đang thuộc danh mục (cho màn quản lý). */
-function getCategoryList() {
+function getCategoryList(month) {
+  month = ymOf_(month) || todayStr_().slice(0, 7);
   const counts = {};
   readTx_().forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1; });
-  return getCategories_().map(c => ({
-    name: c.name, icon: c.icon, budget: c.budget, kind: c.kind,
+  return budgetsFor_(getCategories_(), readOverrides_(), month).map(c => ({
+    name: c.name, icon: c.icon, kind: c.kind, month: month,
+    budget: c.budget, defaultBudget: c.defaultBudget, overridden: c.overridden,
     keywords: c.keywords.join(', '), count: counts[c.name] || 0
   }));
 }
@@ -515,8 +645,14 @@ function saveCategory(c) {
     if (oldName === FALLBACK_CATEGORY && name !== FALLBACK_CATEGORY) {
       throw new Error('Không đổi tên được danh mục "' + FALLBACK_CATEGORY + '" vì app dùng nó cho khoản chưa rõ danh mục.');
     }
+    const oldBudget = Number(sh.getRange(idx + 2, 3, 1, 1).getValues()[0][0]) || 0;
     sh.getRange(idx + 2, 1, 1, 5).setValues([[name, icon, budget, keywords, kind]]);
     const moved = name !== oldName ? renameTxCategory_(oldName, name) : 0;
+    // Ngân sách theo tháng: đổi tên khóa; đổi mặc định thì giữ nguyên các tháng trước
+    const ov = readOverrides_();
+    if (name !== oldName) Object.keys(ov).forEach(ym => { if (oldName in ov[ym]) { ov[ym][name] = ov[ym][oldName]; delete ov[ym][oldName]; } });
+    if (oldBudget !== budget) preserveHistory_(ov, name, oldBudget, todayStr_().slice(0, 7));
+    writeOverrides_(ov);
     return { name: name, renamed: moved };
   });
 }
@@ -539,6 +675,9 @@ function deleteCategory(name, moveTo) {
       moved = renameTxCategory_(name, moveTo);
     }
     sh.deleteRow(idx + 2);
+    const ov = readOverrides_();
+    Object.keys(ov).forEach(ym => { delete ov[ym][name]; });
+    writeOverrides_(ov);
     return { deleted: name, moved: moved };
   });
 }

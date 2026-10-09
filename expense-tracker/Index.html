@@ -137,6 +137,12 @@
   .pill.off { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
   .bar > i.off { background: var(--muted); opacity: .45; }
   .pill.save { color: var(--brand); background: var(--brand-soft); }
+  .pill.ovr { color: var(--text); background: var(--bg); border: 1px dashed var(--muted); }
+  .cat-name .def { font-size: 12px; color: var(--muted); }
+  .cat-row input.ovr { border-color: var(--brand); border-style: dashed; }
+  .reset { min-width: 44px; padding: 0; font-size: 18px; }
+  .apply { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--brand-soft); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .apply span { flex: 1; min-width: 180px; font-size: 13px; }
   .amt.save { color: var(--brand); }
   .icon-pick { display: flex; gap: 4px; flex-wrap: wrap; }
   .icon-pick button { min-height: 40px; min-width: 40px; padding: 4px 6px; font-size: 18px; background: transparent; }
@@ -229,17 +235,26 @@
 
   <!-- ============ TAB: NGÂN SÁCH ============ -->
   <section id="tab-budget" class="hidden">
-    <h1>Ngân sách &amp; danh mục</h1>
+    <div class="title-row"><h1>Ngân sách</h1><span class="muted" id="budMonthLabel"></span></div>
+    <div class="mstrip-wrap">
+      <div class="mstrip" id="budStrip" role="tablist" aria-label="Chọn tháng" onscroll="stripFade(this)"></div>
+      <button class="mcal" aria-label="Chọn tháng khác" onclick="pickMonth(S.budMonth, pickBudMonth, 12)"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></button>
+    </div>
     <div class="card">
-      <div class="row" style="align-items:flex-start">
-        <p class="muted grow" style="margin:0">Đặt hạn mức tháng cho từng danh mục. Bấm vào tên danh mục để đổi tên, icon, từ khóa nhận diện hoặc xóa.</p>
-        <button onclick="openCategory()">+ Thêm danh mục</button>
+      <div class="row">
+        <h2 class="grow" style="margin:0" id="budCardTitle">Hạn mức tháng</h2>
+        <button onclick="openCategory()">+ Danh mục</button>
       </div>
+      <p class="muted" style="margin:6px 0 0">Số nhập ở đây chỉ áp dụng cho tháng này. Bấm tên danh mục để sửa mặc định.</p>
       <div class="muted" id="budgetStatus" style="margin-top:8px"></div>
       <div id="budgetList"></div>
       <div class="row" style="margin-top:12px">
         <span class="grow muted">Tổng ngân sách chi: <b id="budgetTotal" class="num"></b></span>
         <span class="muted">Tự lưu khi nhập xong</span>
+      </div>
+      <div class="apply hidden" id="applyBox">
+        <span id="applyText"></span>
+        <button class="primary" id="btnApply" onclick="applyAsDefault()">Dùng làm mặc định</button>
       </div>
     </div>
     <div class="card"><a id="sheetLink" target="_blank" style="color:var(--brand)">Mở Google Sheet dữ liệu ↗</a></div>
@@ -354,7 +369,7 @@ function prefetch() {
     const ym = S.init.today.slice(0, 7);
     if (!CACHE['dash|' + ym]) api('getDashboard', ym).then(d => { CACHE['dash|' + ym] = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
     if (!CACHE.months) api('getMonthTotals').then(d => { CACHE.months = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
-    if (!CACHE.cats) api('getCategoryList').then(d => { CACHE.cats = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
+    if (!CACHE['cats|' + ym]) api('getCategoryList', ym).then(d => { CACHE['cats|' + ym] = { data: d, str: JSON.stringify(d) }; }).catch(() => {});
   }, 1500); // chờ màn hiện tại tải xong rồi mới tải trước ở nền
 }
 
@@ -638,7 +653,7 @@ function renderDash(d) {
     html += `<div class="card row" style="border-color:var(--warn);align-items:flex-start">
       <span class="pill off" style="margin-top:2px">Ngoài ngân sách</span>
       <span class="grow">Đã chi <b class="num">${vnd(ob.total)}</b> ở ${ob.categories.length} danh mục chưa có hạn mức: ${names}.
-        <a href="#" onclick="go('budget');return false" style="color:var(--brand)">Đặt hạn mức</a></span></div>`;
+        <a href="#" onclick="S.budMonth=S.dashMonth;go('budget');return false" style="color:var(--brand)">Đặt hạn mức</a></span></div>`;
   }
   if (d.daysElapsed && d.daysElapsed < d.daysInMonth && d.budget && d.forecast > d.budget) {
     html += `<div class="card" style="border-color:var(--warn)">⚠️ Với tốc độ hiện tại, cuối tháng sẽ chi khoảng <b>${vnd(d.forecast)}</b>, vượt ngân sách <b>${vnd(d.forecast - d.budget)}</b>.</div>`;
@@ -719,10 +734,11 @@ function setHistMode(m) {
   loadHistory();
 }
 /** Bộ chọn tháng: lưới 12 tháng + chuyển năm. Không cho chọn tháng tương lai. */
-function pickMonth(cur, onPick) {
+/** ahead: số tháng tương lai được phép chọn (ngân sách có thể đặt trước cho tháng sau). */
+function pickMonth(cur, onPick, ahead) {
   cur = cur || S.init.today.slice(0, 7);
   let year = +cur.slice(0, 4);
-  const maxYm = S.init.today.slice(0, 7);
+  const maxYm = addMonths(S.init.today.slice(0, 7), ahead || 0);
   const draw = () => {
     const ym = m => year + '-' + String(m).padStart(2, '0');
     $('mpYear').textContent = 'Năm ' + year;
@@ -810,35 +826,81 @@ async function saveQuickCat() {
 }
 
 /* ---------------- Ngân sách & danh mục ---------------- */
+const addMonths = (ym, n) => { const d = new Date(+ym.slice(0, 4), +ym.slice(5) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+function pickBudMonth(ym) { S.budMonth = ym; renderBudgets(); }
+
 async function renderBudgets() {
+  S.budMonth = S.budMonth || S.init.today.slice(0, 7);
+  const month = S.budMonth, key = 'cats|' + month;
+  $('budMonthLabel').textContent = ymLabel(month);
+  $('budCardTitle').textContent = 'Hạn mức ' + ymLabel(month).toLowerCase();
   $('sheetLink').href = S.init.sheetUrl || '#';
   $('sheetLink').parentNode.classList.toggle('hidden', !S.init.sheetUrl);
-  if (!CACHE.cats) $('budgetList').innerHTML = '<div class="empty"><span class="spin"></span></div>';
+  // Dải tháng: các tháng đã có + 3 tháng tới (để đặt ngân sách trước)
+  cachedCall('months', 'getMonthTotals', [], base => {
+    const months = base.slice(), last = months.length ? months[months.length - 1].ym : S.init.today.slice(0, 7);
+    for (let i = 1; i <= 3; i++) months.push({ ym: addMonths(last, i), spend: 0 });
+    if (!months.some(m => m.ym === month)) { months.push({ ym: month, spend: 0 }); months.sort((x, y) => x.ym < y.ym ? -1 : 1); }
+    renderStrip('budStrip', months, month, pickBudMonth);
+  }).catch(fail);
+  if (!CACHE[key]) $('budgetList').innerHTML = '<div class="empty"><span class="spin"></span></div>';
   try {
-    await cachedCall('cats', 'getCategoryList', [], list => {
+    await cachedCall(key, 'getCategoryList', [month], list => {
+      if (month !== S.budMonth) return;
       if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#budgetList')) return; // đang gõ thì không vẽ lại
       S.catList = list;
       $('budgetList').innerHTML = S.catList.map((c, i) => `
-        <div class="cat-row row click" onclick="if(event.target.tagName!=='INPUT')openCategory(${i})">
+        <div class="cat-row row click" data-i="${i}" onclick="if(!event.target.closest('input,button'))openCategory(${i})">
           <span>${esc(c.icon)}</span>
-          <span class="grow cat-name"><span>${esc(c.name)}</span><small>${c.count} khoản ${c.kind === 'save' ? '<span class="pill save">Để dành · mục tiêu</span>' : statusPill(c.budget)}</small></span>
-          <input class="num" style="max-width:130px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" data-kind="${c.kind}" aria-label="${c.kind === 'save' ? 'Mục tiêu để dành' : 'Ngân sách'} ${esc(c.name)}"
+          <span class="grow cat-name"><span>${esc(c.name)} <span class="def" aria-hidden="true">✎</span></span>
+            <small>${c.count} khoản ${c.kind === 'save' ? '<span class="pill save">Để dành · mục tiêu</span>' : statusPill(c.budget)}
+              <span class="ovrinfo">${ovrInfo(c)}</span></small></span>
+          <input class="num${c.overridden ? ' ovr' : ''}" style="max-width:120px;text-align:right" inputmode="numeric" data-name="${esc(c.name)}" data-kind="${c.kind}"
+            aria-label="${c.kind === 'save' ? 'Mục tiêu để dành' : 'Ngân sách'} ${esc(c.name)} ${ymLabel(month)}"
             value="${c.budget.toLocaleString('vi-VN')}" data-saved="${c.budget}" onblur="fmtInput(this)" oninput="updBudgetTotal()" onchange="saveOneBudget(this)">
-          <button class="ghost" style="min-width:44px" title="Sửa danh mục" aria-label="Sửa ${esc(c.name)}">✏️</button></div>`).join('');
+          <button class="ghost reset${c.overridden ? '' : ' hidden'}" title="Về mặc định" aria-label="Đưa ${esc(c.name)} về mặc định" onclick="resetMonthBudget(${i})">↺</button></div>`).join('');
       updBudgetTotal();
-    });
+    }, () => month === S.budMonth);
   } catch (e) { fail(e); }
 }
-/** Tự lưu hạn mức của 1 danh mục khi rời ô nhập. */
+function ovrInfo(c) {
+  return c.overridden ? '<span class="pill ovr">Riêng tháng này</span> <span class="def">mặc định ' + short(c.defaultBudget) + '</span>' : '';
+}
+/** Tự lưu hạn mức của 1 danh mục cho THÁNG ĐANG CHỌN khi rời ô nhập. */
 async function saveOneBudget(el) {
-  const name = el.dataset.name, budget = digits(el.value);
+  const name = el.dataset.name, budget = digits(el.value), month = S.budMonth;
   if (String(budget) === el.dataset.saved) return;
   try {
-    await api('saveBudgets', [{ name: name, budget: budget }]);
+    const r = await api('setMonthBudget', month, name, budget);
     el.dataset.saved = String(budget);
-    invalidate(); await refreshInit();
-    toast('Đã lưu hạn mức ' + name + ': ' + vnd(budget) + ' ✓');
+    const c = S.catList.find(x => x.name === name);
+    if (c) { c.budget = r.budget; c.overridden = r.overridden; updateBudgetRow(el, c); }
+    invalidate();
+    toast(name + ' · ' + ymLabel(month) + ': ' + vnd(budget) + (r.overridden ? ' (mặc định ' + short(r.defaultBudget) + ')' : ' = mặc định') + ' ✓');
   } catch (e) { fail(e); }
+}
+function updateBudgetRow(el, c) {
+  const row = el.closest('.cat-row');
+  row.querySelector('.ovrinfo').innerHTML = ovrInfo(c);
+  row.querySelector('.reset').classList.toggle('hidden', !c.overridden);
+  el.classList.toggle('ovr', c.overridden);
+  updBudgetTotal();
+}
+async function resetMonthBudget(i) {
+  const c = S.catList[i], month = S.budMonth;
+  try {
+    await api('setMonthBudget', month, c.name, c.defaultBudget);
+    invalidate(); renderBudgets();
+    toast(c.name + ' · ' + ymLabel(month) + ' về mặc định ' + vnd(c.defaultBudget) + ' ✓');
+  } catch (e) { fail(e); }
+}
+async function applyAsDefault() {
+  const month = S.budMonth, btn = $('btnApply'); busy(btn, true);
+  try {
+    const n = await api('applyMonthAsDefault', month);
+    invalidate(); await refreshInit(); renderBudgets();
+    toast('Đã dùng ' + n + ' hạn mức của ' + ymLabel(month) + ' làm mặc định ✓');
+  } catch (e) { fail(e); } finally { busy(btn, false); }
 }
 /** Trạng thái tự động theo ngân sách: > 0 là đã duyệt, = 0 là ngoài ngân sách. */
 function statusPill(budget) {
@@ -859,6 +921,10 @@ function updBudgetTotal() {
     (saves.length ? '</b><br>Mục tiêu để dành: <b class="num">' + vnd(saveTotal) : '');
   $('budgetStatus').innerHTML = statusPill(1) + ' ' + approved + ' danh mục &nbsp; ' + statusPill(0) + ' ' + (inputs.length - approved) +
     ' danh mục · Nhập hạn mức > 0 để duyệt.';
+  const ovr = (S.catList || []).filter(c => c.overridden);
+  $('applyBox').classList.toggle('hidden', !ovr.length);
+  if (ovr.length) $('applyText').textContent = ymLabel(S.budMonth) + ' có ' + ovr.length + ' hạn mức chỉnh riêng (' +
+    ovr.map(c => c.name).join(', ') + '). Muốn áp dụng luôn cho các tháng sau? Các tháng trước giữ nguyên.';
 }
 
 /** Nạp lại danh mục sau khi thêm/sửa/xóa để màn Ghi, Lịch sử, Tổng quan dùng bản mới. */
@@ -889,8 +955,9 @@ function openCategory(i) {
       <button type="button" data-k="save" class="${c.kind === 'save' ? 'on' : ''}" onclick="setKind('save')">Để dành</button>
     </div>
     <div class="muted" id="cKindHint" style="margin-top:4px"></div>`}
-    <label for="cBudget" id="cBudgetLabel">Ngân sách tháng (đ)</label>
-    <input id="cBudget" class="num" inputmode="numeric" value="${c.budget ? c.budget.toLocaleString('vi-VN') : ''}" onblur="fmtInput(this)" placeholder="0">
+    <label for="cBudget" id="cBudgetLabel">Ngân sách mặc định mỗi tháng (đ)</label>
+    <input id="cBudget" class="num" inputmode="numeric" value="${(c.defaultBudget != null ? c.defaultBudget : c.budget) ? (c.defaultBudget != null ? c.defaultBudget : c.budget).toLocaleString('vi-VN') : ''}" onblur="fmtInput(this)" placeholder="0">
+    <div class="muted" style="margin-top:4px">Áp dụng cho mọi tháng chưa chỉnh riêng, từ tháng này. Các tháng trước giữ nguyên.</div>
     <label for="cKw">Từ khóa nhận diện</label>
     <textarea id="cKw" style="min-height:64px" placeholder="Cách nhau bằng dấu phẩy, ví dụ: gym, yoga, bơi">${esc(c.keywords)}</textarea>
     <div class="muted">Khi gõ "gym 500k", app tự xếp khoản đó vào danh mục này.</div>
@@ -908,7 +975,7 @@ function openCategory(i) {
 function setKind(k) {
   S.editingKind = k;
   $('cKind').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
-  $('cBudgetLabel').textContent = k === 'save' ? 'Mục tiêu để dành mỗi tháng (đ)' : 'Ngân sách tháng (đ)';
+  $('cBudgetLabel').textContent = k === 'save' ? 'Mục tiêu để dành mặc định mỗi tháng (đ)' : 'Ngân sách mặc định mỗi tháng (đ)';
   $('cKindHint').textContent = k === 'save'
     ? 'Tiền chuyển vào tiết kiệm, đầu tư… Không tính vào tổng chi, theo dõi riêng so với mục tiêu.'
     : 'Tính vào tổng chi và ngân sách chi tiêu.';
