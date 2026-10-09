@@ -229,6 +229,13 @@ function getRecent(range) {
   };
 }
 
+/** Chi ở danh mục chưa có ngân sách (ngân sách = 0) trong tháng. */
+function offBudget_(byCatMap) {
+  const cats = Object.keys(byCatMap).map(k => byCatMap[k]).filter(c => !c.budget && c.amount)
+    .sort((a, b) => b.amount - a.amount);
+  return { total: cats.reduce((s, c) => s + c.amount, 0), categories: cats.map(c => ({ name: c.name, amount: c.amount })) };
+}
+
 function getDashboard(month) {
   const cats = getCategories_();
   const all = readTx_();
@@ -275,7 +282,8 @@ function getDashboard(month) {
       .filter(c => c.amount || c.budget)
       .sort((a, b) => b.amount - a.amount),
     daily: daily,
-    top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5)
+    top: cur.slice().sort((a, b) => b.amount - a.amount).slice(0, 5),
+    offBudget: offBudget_(byCatMap)
   };
 }
 
@@ -678,7 +686,8 @@ function monthlyReview(month) {
     du_bao_cuoi_thang: d.forecast,
     theo_danh_muc: d.byCategory.map(c => ({ danh_muc: c.name, chi: c.amount, ngan_sach: c.budget, thang_truoc: c.prev, so_giao_dich: c.count })),
     khoan_lon_nhat: d.top.map(t => ({ ngay: t.date, so_tien: t.amount, danh_muc: t.category, mo_ta: t.description })),
-    chi_theo_ngay: d.daily
+    chi_theo_ngay: d.daily,
+    chi_ngoai_ngan_sach: d.offBudget
   };
   try {
     return callAI_({
@@ -687,7 +696,7 @@ function monthlyReview(month) {
         'Dựa hoàn toàn vào số liệu được cung cấp, không bịa thêm. Định dạng tiền kiểu 1.250.000đ. ' +
         'Trả lời đúng cấu trúc Markdown sau, tổng dưới 250 từ:\n' +
         '## Tóm tắt\n(2-3 câu: tổng chi so với ngân sách và so với CÙNG KỲ tháng trước (cung_ky_thang_truoc), dự báo cuối tháng nếu tháng chưa hết)\n' +
-        '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, thay đổi lớn, khoản bất thường)\n' +
+        '## Điểm đáng chú ý\n(3 gạch đầu dòng, mỗi dòng có con số cụ thể: danh mục vượt/sắp vượt, chi ngoài ngân sách (chi_ngoai_ngan_sach) nếu có, thay đổi lớn, khoản bất thường)\n' +
         '## Hành động tháng tới\n(3 gạch đầu dòng, cụ thể và đo được, vd "Giới hạn Ăn uống 3.500.000đ, tối đa 2 lần ăn ngoài/tuần")',
       user: 'Số liệu chi tiêu:\n' + JSON.stringify(summary)
     });
@@ -704,6 +713,10 @@ function localReview_(d) {
       Math.round((d.total - d.prevSamePeriod) / d.prevSamePeriod * 100) + '%.' : '') +
     (d.daysElapsed < d.daysInMonth ? ' Dự báo cuối tháng: ' + f(d.forecast) + '.' : ''));
   lines.push('## Điểm đáng chú ý');
+  if (d.offBudget && d.offBudget.total) {
+    lines.push('- Chi ngoài ngân sách **' + f(d.offBudget.total) + '** ở ' + d.offBudget.categories.length + ' danh mục (' +
+      d.offBudget.categories.map(c => c.name).join(', ') + '). Cân nhắc đặt hạn mức nếu chi thường xuyên.');
+  }
   const over = d.byCategory.filter(c => c.budget && c.amount > c.budget);
   const near = d.byCategory.filter(c => c.budget && c.amount <= c.budget && c.amount >= c.budget * 0.8);
   if (d.byCategory[0]) lines.push('- Chi nhiều nhất: **' + d.byCategory[0].name + '** ' + f(d.byCategory[0].amount) + '.');

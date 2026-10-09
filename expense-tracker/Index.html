@@ -471,6 +471,13 @@ function renderDash(d) {
     kpi('Chi thường / ngày', vnd(d.avgPerDay), d.daysElapsed && d.daysElapsed < d.daysInMonth ? 'Dự báo ' + short(d.forecast) : d.daysElapsed + ' ngày') +
     '</div>';
 
+  if (d.offBudget && d.offBudget.total) {
+    const ob = d.offBudget, names = ob.categories.map(c => esc(c.name) + ' ' + short(c.amount)).join(', ');
+    html += `<div class="card row" style="border-color:var(--warn);align-items:flex-start">
+      <span class="pill off" style="margin-top:2px">Ngoài ngân sách</span>
+      <span class="grow">Đã chi <b class="num">${vnd(ob.total)}</b> ở ${ob.categories.length} danh mục chưa có hạn mức: ${names}.
+        <a href="#" onclick="go('budget');return false" style="color:var(--brand)">Đặt hạn mức</a></span></div>`;
+  }
   if (d.daysElapsed && d.daysElapsed < d.daysInMonth && d.budget && d.forecast > d.budget) {
     html += `<div class="card" style="border-color:var(--warn)">⚠️ Với tốc độ hiện tại, cuối tháng sẽ chi khoảng <b>${vnd(d.forecast)}</b>, vượt ngân sách <b>${vnd(d.forecast - d.budget)}</b>.</div>`;
   }
