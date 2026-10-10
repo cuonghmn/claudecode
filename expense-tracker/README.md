@@ -32,7 +32,7 @@ Trong trình soạn thảo Apps Script:
 ### Bước 3 — Khởi tạo Sheet
 1. Ở thanh trên cùng chọn hàm **`setup`** → **Run**.
 2. Lần đầu Google sẽ hỏi quyền: **Review permissions** → chọn tài khoản → *Advanced* → *Go to … (unsafe)* → **Allow**. Đây là script của chính bạn, chạy trên tài khoản của bạn.
-3. Quay lại Sheet, bạn sẽ thấy 2 tab **GiaoDich** và **DanhMuc**, cùng menu **💰 Chi tiêu**.
+3. Quay lại Sheet và **tải lại trang (F5)**: bạn sẽ thấy 3 tab **GiaoDich**, **DanhMuc**, **NganSachThang**, cùng menu **💰 Chi tiêu**.
 4. *(Muốn xem thử)* Chạy menu **💰 Chi tiêu → Thêm dữ liệu DEMO**. Xóa bằng **Xóa dữ liệu DEMO**.
 
 ### Bước 4 — Deploy web app
@@ -48,7 +48,7 @@ Trong trình soạn thảo Apps Script:
 **Cách A: Gemini, miễn phí (khuyên dùng để trải nghiệm)**
 1. Vào [aistudio.google.com](https://aistudio.google.com), đăng nhập bằng Gmail → **Get API key** → **Create API key**. Không cần thẻ.
 2. Apps Script → **Project Settings ⚙️ → Script properties → Add script property**: `GEMINI_API_KEY` = key vừa tạo.
-3. Tải lại web app. Ô nhập sẽ hiện **🤖 Gemini đang bật**.
+3. Tải lại web app. Cạnh tiêu đề "Ghi chi tiêu" sẽ hiện nhãn **🤖 Gemini**.
 
 > Gói free có giới hạn số lượt/ngày (xem trong AI Studio) và Google có thể dùng dữ liệu gói free để cải thiện model. App chỉ gửi câu bạn gõ và số liệu tổng hợp tháng, không gửi cả Sheet.
 

@@ -45,7 +45,8 @@
   ol.todo > li { counter-increment: s; display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
   ol.todo > li::before { content: counter(s); display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
     background: var(--brand-soft); color: var(--brand); font-weight: 700; font-size: 14px; margin-top: 1px; }
-  .ui { font-weight: 600; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+  .ui { font-weight: 600; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px;
+    white-space: normal; overflow-wrap: anywhere; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .en { color: var(--muted); font-size: .9em; }
   code, .mono { font-family: var(--mono); font-size: .9em; background: var(--code-bg); border-radius: 5px; padding: 1px 5px; }
   .callout { border-radius: 12px; padding: 12px 14px; margin: 14px 0; font-size: 15px; display: grid; grid-template-columns: 24px 1fr; gap: 8px; }
@@ -64,8 +65,11 @@
   button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
   .btn-copy { background: var(--brand); color: var(--on-brand); min-height: 40px; padding: 6px 14px; }
   .btn-copy.ok { background: var(--brand-soft); color: var(--brand); }
-  .kv { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 12px; align-items: center; margin: 12px 0; }
+  .kv { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; margin: 12px 0; }
+  .kv > * { min-width: 0; overflow-wrap: anywhere; }
   .kv .k { font-family: var(--mono); font-weight: 600; }
+  ol.todo > li > div { min-width: 0; overflow-wrap: anywhere; }
+  .mono, code { overflow-wrap: anywhere; }
 
   /* Hình minh họa giao diện Google (vẽ lại, đơn giản hóa) */
   .shot { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 14px 0; background: var(--card); font-size: 13px; }

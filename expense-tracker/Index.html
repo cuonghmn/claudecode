@@ -358,7 +358,7 @@ function catSelect(sel, attrs) {
     catOptions(sel) + '<option value="__new__">＋ Thêm danh mục mới…</option></select>';
 }
 function catOptions(sel) {
-  return S.init.categories.map(c => '<option' + (c.name === sel ? ' selected' : '') + ' value="' + esc(c.name) + '">' + c.icon + ' ' + esc(c.name) + '</option>').join('');
+  return S.init.categories.map(c => '<option' + (c.name === sel ? ' selected' : '') + ' value="' + esc(c.name) + '">' + esc(c.icon) + ' ' + esc(c.name) + '</option>').join('');
 }
 function methodOptions(sel) {
   return S.init.methods.map(m => '<option' + (m === sel ? ' selected' : '') + '>' + esc(m) + '</option>').join('');
@@ -579,13 +579,18 @@ async function saveEdit() {
 async function delTx() {
   const btn = $('btnDel');
   if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = 'Bấm lần nữa để xóa'; return; }
+  if (btn.dataset.busy) return;            // chạm nhanh 2 lần: chỉ gửi 1 lệnh xóa
+  btn.dataset.busy = '1'; busy(btn, true);
   try {
     const tx = await api('deleteTransaction', S.editing.id); closeModal(); invalidate(); refreshCurrent();
     toast('Đã xóa "' + (tx && (tx.description || tx.category) || 'khoản chi') + '"', 0, tx && { label: 'Hoàn tác', fn: () => undoDelete(tx) });
-  } catch (e) { fail(e); }
+  } catch (e) { fail(e); delete btn.dataset.busy; busy(btn, false); }
 }
 async function undoAdd(ids) {
-  try { await api('deleteTransactions', ids); invalidate(); refreshCurrent(); toast('Đã hoàn tác'); } catch (e) { fail(e); }
+  try {
+    const n = await api('deleteTransactions', ids); invalidate(); refreshCurrent();
+    toast(n ? 'Đã hoàn tác' : 'Không hoàn tác được: không tìm thấy khoản vừa lưu. Hãy xóa thủ công trong Lịch sử.', n ? 0 : 5000);
+  } catch (e) { fail(e); }
 }
 async function undoDelete(tx) {
   try { await api('addTransactions', [tx]); invalidate(); refreshCurrent(); toast('Đã khôi phục ✓'); } catch (e) { fail(e); }
@@ -686,7 +691,7 @@ function renderDash(d) {
     const p = c.budget ? c.amount / c.budget * 100 : (c.amount ? 100 : 0);
     const cls = p > 100 ? 'bad' : p >= 80 ? 'warn' : '';
     return `<div class="cat-row"><div class="row">
-        <span>${c.icon}</span><span class="grow">${esc(c.name)}</span>
+        <span>${esc(c.icon)}</span><span class="grow">${esc(c.name)}</span>
         <span class="num"><b>${vnd(c.amount)}</b> ${c.budget ? '<span class="muted">/ ' + short(c.budget) + '</span>' : '<span class="pill off">Ngoài ngân sách</span>'}</span></div>
         <div class="bar"><i class="${c.budget ? cls : 'off'}" style="width:${Math.min(100, p)}%"></i></div></div>`;
   }).join('') || '<div class="empty">Chưa có dữ liệu</div>') + '</div>';

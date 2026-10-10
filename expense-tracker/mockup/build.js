@@ -132,7 +132,7 @@ const FEEDBACK = [
   ['categories', '10 danh mục chi tiêu', 'Ăn uống, Đi lại, Nhà ở & Hóa đơn, Mua sắm, Sức khỏe, Học tập, Giải trí, Gia đình & Hiếu hỉ, Tiết kiệm & Đầu tư, Khác. Thiếu/thừa gì?'],
   ['method', 'Phương thức thanh toán', 'Chuyển khoản / Thẻ / Tiền mặt / Ví điện tử. Có cần ghi rõ thẻ nào, tài khoản nào không?'],
   ['dashboard', 'Tổng quan tháng', '4 KPI, cảnh báo dự báo vượt ngân sách, chi theo danh mục, theo ngày, top 5 khoản. Đúng thứ Rio cần nhìn?'],
-  ['budget', 'Ngân sách theo danh mục', 'Mức mẫu tổng 19,3 triệu/tháng. Cách đặt theo từng danh mục có phù hợp?'],
+  ['budget', 'Ngân sách theo danh mục', 'Mức mẫu: 16,3 triệu chi tiêu + 3 triệu mục tiêu để dành mỗi tháng. Cách đặt theo từng danh mục có phù hợp?'],
   ['history', 'Lịch sử & sửa/xóa', 'Lọc theo tháng, danh mục, tìm kiếm; bấm vào khoản để sửa/xóa.'],
   ['review', 'Nhận xét cuối tháng', 'Bản mockup dùng nhận xét theo quy tắc; bật AI (Gemini/Claude) sẽ có phân tích và 3 hành động cụ thể.']
 ];

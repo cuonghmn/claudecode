@@ -58,12 +58,12 @@ function onOpen() {
     .createMenu('💰 Chi tiêu')
     .addItem('1. Khởi tạo / sửa cấu trúc Sheet', 'setup')
     .addSeparator()
-    .addItem('Thêm dữ liệu DEMO (2 tháng)', 'seedDemoData')
+    .addItem('Thêm dữ liệu DEMO (6 tháng)', 'seedDemoData')
     .addItem('Xóa dữ liệu DEMO', 'removeDemoData')
     .addToUi();
 }
 
-/** Chạy 1 lần: tạo 2 sheet, tiêu đề, danh mục mặc định, lưu ID file. An toàn khi chạy lại. */
+/** Chạy 1 lần: tạo 3 sheet (GiaoDich, DanhMuc, NganSachThang), tiêu đề, danh mục mặc định, lưu ID file. An toàn khi chạy lại. */
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) throw new Error('Hãy mở Apps Script từ Google Sheet (Tiện ích mở rộng → Apps Script) rồi chạy setup.');
@@ -74,6 +74,7 @@ function setup() {
   tx.getRange(1, 1, 1, TX_HEADERS.length).setValues([TX_HEADERS])
     .setFontWeight('bold').setBackground('#0f766e').setFontColor('#ffffff');
   tx.setFrozenRows(1);
+  tx.getRange('A:A').setNumberFormat('@');   // ID là chữ: không để Sheets tự đổi "01234567"/"12345e67" thành số
   tx.getRange('B:B').setNumberFormat('dd/MM/yyyy');
   tx.getRange('C:C').setNumberFormat('#,##0');
   tx.getRange('H:H').setNumberFormat('dd/MM/yyyy HH:mm');
@@ -149,6 +150,11 @@ function addDays_(ymd, n) {
   const p = ymd.split('-').map(Number);
   const d = new Date(Date.UTC(p[0], p[1] - 1, p[2] + n));
   return d.toISOString().slice(0, 10);
+}
+
+/** Ngày yyyy-MM-dd có thật không (loại 31/02, 31/04, 29/02 năm không nhuận…). */
+function isValidYmd_(ymd) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(ymd)) && addDays_(String(ymd), 0) === String(ymd);
 }
 
 function prevMonth_(ym) {
@@ -307,9 +313,9 @@ function readTx_() {
       date: fmtDate_(r[1]),
       amount: Number(r[2]) || 0,
       category: String(r[3] || 'Khác'),
-      description: String(r[4] || ''),
+      description: fromSheetText_(r[4]),
       method: String(r[5] || ''),
-      note: String(r[6] || ''),
+      note: fromSheetText_(r[6]),
       createdAt: r[7] instanceof Date ? r[7].getTime() : 0
     }));
 }
@@ -460,7 +466,9 @@ function getDashboard(month) {
   prevTx.forEach(t => { ensure(t.category).prev += t.amount; });
 
   // So cùng kỳ: ngày 1..N tháng này với ngày 1..N tháng trước (N = số ngày đã qua).
-  const prevSamePeriod = prevTx.filter(t => Number(t.date.slice(8, 10)) <= elapsed).reduce((s, t) => s + t.amount, 0);
+  // Tháng đã kết thúc thì so cả tháng trước (kể cả ngày 31 khi tháng này chỉ có 30 ngày)
+  const prevSamePeriod = elapsed >= days ? prevTotal
+    : prevTx.filter(t => Number(t.date.slice(8, 10)) <= elapsed).reduce((s, t) => s + t.amount, 0);
 
   // Dự báo = đã chi + (chi thường ngày TB × số ngày còn lại). Khoản lớn không bị nhân lên.
   const routine = cur.filter(t => t.amount < BIG_ITEM_THRESHOLD).reduce((s, t) => s + t.amount, 0);
@@ -504,7 +512,7 @@ function getDashboard(month) {
 function normalizeItem_(it, catNames, today) {
   const amount = Math.round(Number(String(it.amount).replace(/[^\d.-]/g, '')));
   if (!amount || amount <= 0) throw new Error('Số tiền không hợp lệ: ' + it.amount);
-  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(it.date)) ? String(it.date) : today;
+  const date = isValidYmd_(it.date) ? String(it.date) : today;   // ngày sai (vd 31/02) thì dùng hôm nay
   return {
     date: date,
     amount: amount,
@@ -523,14 +531,23 @@ function addTransactions(items) {
   const now = new Date();
   const rows = items.map(it => {
     const t = normalizeItem_(it, catNames, today);
-    return [Utilities.getUuid().slice(0, 8), toDate_(t.date), t.amount, t.category, t.description, t.method, t.note, now];
+    return [newId_(), toDate_(t.date), t.amount, t.category, sheetText_(t.description), t.method, sheetText_(t.note), now];
   });
   return withLock_(() => {
     const sh = sheet_(SHEET_TX);
-    sh.getRange(sh.getLastRow() + 1, 1, rows.length, TX_HEADERS.length).setValues(rows);
+    const r0 = sh.getLastRow() + 1;
+    sh.getRange(r0, 1, rows.length, 1).setNumberFormat('@');
+    sh.getRange(r0, 1, rows.length, TX_HEADERS.length).setValues(rows);
     return rows.map(r => r[0]);
   });
 }
+
+/** ID giao dịch luôn bắt đầu bằng chữ "t" để Google Sheets không hiểu nhầm thành số. */
+function newId_() { return 't' + Utilities.getUuid().replace(/-/g, '').slice(0, 7); }
+
+/** Chữ bắt đầu bằng = + - @ sẽ bị Sheets hiểu là công thức → thêm dấu ' ở đầu (Sheets ẩn dấu này khi hiển thị). */
+function sheetText_(v) { v = String(v || ''); return /^[=+\-@]/.test(v) ? "'" + v : v; }
+function fromSheetText_(v) { v = String(v || ''); return /^'[=+\-@]/.test(v) ? v.slice(1) : v; }
 
 function findRow_(sh, id) {
   const cell = sh.getRange('A:A').createTextFinder(String(id)).matchEntireCell(true).findNext();
@@ -544,7 +561,7 @@ function updateTransaction(tx) {
   return withLock_(() => {
     const sh = sheet_(SHEET_TX);
     const row = findRow_(sh, tx.id);
-    sh.getRange(row, 2, 1, 6).setValues([[toDate_(t.date), t.amount, t.category, t.description, t.method, t.note]]);
+    sh.getRange(row, 2, 1, 6).setValues([[toDate_(t.date), t.amount, t.category, sheetText_(t.description), t.method, sheetText_(t.note)]]);
     return true;
   });
 }
@@ -715,7 +732,8 @@ function parseInput(text) {
 
 /** Bộ tách theo quy tắc — chạy không cần API. Hiểu: 45k, 1tr2, 1.200.000, 2,5tr, hôm qua, 05/10. */
 function parseLocal_(text, cats, today) {
-  const segments = String(text).split(/\n|;|,(?!\d)|\s\+\s|\svà\s/i).map(s => s.trim()).filter(Boolean);
+  // Tách khoản: xuống dòng, ";", " + ", " và ", dấu phẩy. Dấu phẩy nằm GIỮA 2 chữ số (2,5tr · 1,200,000) là số, không tách.
+  const segments = String(text).split(/\n|;|,(?!\d)|(?<=[^\d\s]),(?=\d)|\s\+\s|\svà\s/i).map(s => s.trim()).filter(Boolean);
   const out = [];
   let carryDate = null;
   segments.forEach(seg => {
@@ -731,22 +749,23 @@ function parseLocal_(text, cats, today) {
       let y = dm[3] ? Number(dm[3]) : Number(today.slice(0, 4));
       if (y < 100) y += 2000;
       const m = Number(dm[2]), d = Number(dm[1]);
-      if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-        date = y + '-' + ('0' + m).slice(-2) + '-' + ('0' + d).slice(-2);
-        s = s.replace(dm[0], ' ');
-      }
+      const ymd = y + '-' + ('0' + m).slice(-2) + '-' + ('0' + d).slice(-2);
+      if (isValidYmd_(ymd)) { date = ymd; s = s.replace(dm[0], ' '); }   // 31/02 không hợp lệ → bỏ qua, dùng hôm nay
     }
     if (date) carryDate = date;
 
     // Số tiền
     let amount = 0, m;
     const END = '(?=[^a-zà-ỹ]|$)';
-    if ((m = s.match(new RegExp('(\\d+)\\s*(?:tr|triệu|m)\\s*(\\d+)' + END)))) {
+    // Thứ tự ưu tiên: "1tr2" (phần lẻ dính liền, 1–3 chữ số) → "5tr" → "45k" → "2m" (m có thể là mét nên xét sau k) → số trơn
+    if ((m = s.match(new RegExp('(\\d+)\\s*(?:tr|triệu)(\\d{1,3})(?![\\d.,])' + END)))) {
       amount = parseFloat(m[1] + '.' + m[2]) * 1e6;
-    } else if ((m = s.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(?:tr|triệu|m)' + END)))) {
+    } else if ((m = s.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(?:tr|triệu)' + END)))) {
       amount = parseFloat(m[1].replace(',', '.')) * 1e6;
     } else if ((m = s.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(?:k|nghìn|ngàn|n)' + END)))) {
       amount = parseFloat(m[1].replace(',', '.')) * 1e3;
+    } else if ((m = s.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*m' + END)))) {
+      amount = parseFloat(m[1].replace(',', '.')) * 1e6;
     } else if ((m = s.match(/(\d{1,3}(?:[.,]\d{3})+|\d+)\s*(?:đ|d|vnd|vnđ|đồng)?(?=[^a-zà-ỹ\d]|$)/))) {
       amount = Number(m[1].replace(/[.,]/g, ''));
       if (amount > 0 && amount < 1000) amount *= 1000; // "phở 55" → 55.000
@@ -785,9 +804,15 @@ function parseLocal_(text, cats, today) {
 function guessCategory_(text, cats) {
   let best = FALLBACK_CATEGORY, bestLen = 0;
   cats.forEach(c => c.keywords.forEach(k => {
-    if (k.length >= bestLen && text.indexOf(k) >= 0) { best = c.name; bestLen = k.length; }
+    if (k.length >= bestLen && hasWord_(text, k)) { best = c.name; bestLen = k.length; }
   }));
   return best;
+}
+
+/** Có từ/cụm từ k đứng riêng trong text không (không khớp "ăn" bên trong "căn", "be" trong "beer"). */
+function hasWord_(text, k) {
+  const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp('(^|[^\\p{L}\\p{N}])' + esc + '(?=$|[^\\p{L}\\p{N}])', 'u').test(text);
 }
 
 /* ============================ AI: Gemini (free) hoặc Claude ============================ */
@@ -818,6 +843,17 @@ function callAI_(task) {
   throw new Error('Chưa cấu hình AI');
 }
 
+function safeJson_(text) { try { return JSON.parse(text); } catch (e) { return null; } }
+
+/** Lỗi HTTP từ AI → câu dễ hiểu cho người dùng (kèm mã để tra cứu). */
+function aiHttpError_(name, code, json) {
+  const detail = json && json.error && json.error.message ? ' (' + String(json.error.message).slice(0, 120) + ')' : '';
+  if (code === 429) return name + ' hết hạn mức (quá nhiều lượt), thử lại sau [429]';
+  if (code === 400 || code === 401 || code === 403) return name + ': API key không hợp lệ hoặc chưa có quyền, kiểm tra lại key trong Script properties [' + code + ']' + detail;
+  if (code >= 500) return name + ' đang quá tải hoặc gián đoạn, thử lại sau ít phút [' + code + ']';
+  return name + ' báo lỗi [' + code + ']' + detail;
+}
+
 function callGemini_(task) {
   const model = prop_('GEMINI_MODEL') || DEFAULT_GEMINI_MODEL;
   const body = {
@@ -834,14 +870,17 @@ function callGemini_(task) {
     payload: JSON.stringify(body), muteHttpExceptions: true
   });
   const code = res.getResponseCode();
-  const json = JSON.parse(res.getContentText());
-  if (code === 429) throw new Error('Gemini hết hạn mức miễn phí, thử lại sau');
-  if (code !== 200) throw new Error('Gemini HTTP ' + code + ': ' + (json.error && json.error.message || res.getContentText().slice(0, 200)));
+  const json = safeJson_(res.getContentText());
+  if (code !== 200) throw new Error(aiHttpError_('Gemini', code, json));
+  if (!json) throw new Error('Gemini trả về dữ liệu không đọc được, thử lại sau');
   const cand = (json.candidates || [])[0];
   if (!cand || !cand.content) throw new Error('Gemini không trả kết quả (' + (cand && cand.finishReason || (json.promptFeedback && json.promptFeedback.blockReason) || 'không rõ') + ')');
   if (cand.finishReason === 'MAX_TOKENS') throw new Error('Phản hồi bị cắt do quá dài');
   const text = cand.content.parts.filter(p => p.text && !p.thought).map(p => p.text).join('');
-  return task.schema ? JSON.parse(text) : text;
+  if (!task.schema) return text;
+  const obj = safeJson_(text);
+  if (!obj) throw new Error('Gemini trả về dữ liệu không đọc được, thử lại sau');
+  return obj;
 }
 
 /** Gemini dùng tập con OpenAPI: bỏ additionalProperties, kiểu viết hoa. */
@@ -881,12 +920,16 @@ function callClaude_(task) {
     payload: JSON.stringify(body), muteHttpExceptions: true
   });
   const code = res.getResponseCode();
-  const json = JSON.parse(res.getContentText());
-  if (code !== 200) throw new Error('Claude HTTP ' + code + ': ' + (json.error && json.error.message || res.getContentText().slice(0, 200)));
+  const json = safeJson_(res.getContentText());
+  if (code !== 200) throw new Error(aiHttpError_('Claude', code, json));
+  if (!json) throw new Error('Claude trả về dữ liệu không đọc được, thử lại sau');
   if (json.stop_reason === 'refusal') throw new Error('Claude từ chối xử lý yêu cầu này');
   if (json.stop_reason === 'max_tokens') throw new Error('Phản hồi bị cắt do quá dài');
-  const text = json.content.filter(b => b.type === 'text').map(b => b.text).join('');
-  return task.schema ? JSON.parse(text) : text;
+  const text = (json.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  if (!task.schema) return text;
+  const obj = safeJson_(text);
+  if (!obj) throw new Error('Claude trả về dữ liệu không đọc được, thử lại sau');
+  return obj;
 }
 
 function parseWithAI_(text, cats, today) {
@@ -966,7 +1009,7 @@ function localReview_(d) {
   const f = n => Math.round(n).toLocaleString('vi-VN') + 'đ';
   const lines = ['## Tóm tắt'];
   lines.push('Tổng chi **' + f(d.total) + '** / ngân sách ' + f(d.budget) + ' (' + Math.round(d.total / (d.budget || 1) * 100) + '%).' +
-    (d.prevSamePeriod ? ' So với cùng kỳ tháng trước (ngày 1–' + d.daysElapsed + '): ' + (d.total >= d.prevSamePeriod ? '+' : '') +
+    (d.prevSamePeriod ? (d.daysElapsed >= d.daysInMonth ? ' So với tháng trước: ' : ' So với cùng kỳ tháng trước (ngày 1–' + d.daysElapsed + '): ') + (d.total >= d.prevSamePeriod ? '+' : '') +
       Math.round((d.total - d.prevSamePeriod) / d.prevSamePeriod * 100) + '%.' : '') +
     (d.daysElapsed < d.daysInMonth ? ' Dự báo cuối tháng: ' + f(d.forecast) + '.' : ''));
   if (d.savings && (d.savings.total || d.savings.target)) {
@@ -1010,7 +1053,7 @@ function seedDemoData() {
     const lastDay = ym === cur ? Number(today.slice(8, 10)) : daysInMonth_(ym);
     const f = factors[mi];
     const add = (day, cat, desc, amt, method) =>
-      rows.push([Utilities.getUuid().slice(0, 8), toDate_(ym + '-' + ('0' + day).slice(-2)), amt, cat, desc, method, 'DEMO', now]);
+      rows.push([newId_(), toDate_(ym + '-' + ('0' + day).slice(-2)), amt, cat, desc, method, 'DEMO', now]);
     add(1, 'Nhà ở & Hóa đơn', 'Tiền thuê nhà', 5000000, 'Chuyển khoản');
     if (lastDay >= 5) add(5, 'Nhà ở & Hóa đơn', 'Tiền điện', 780000, 'Chuyển khoản');
     add(Math.min(lastDay, 10), 'Tiết kiệm & Đầu tư', 'Gửi tiết kiệm', 3000000, 'Chuyển khoản');
@@ -1025,7 +1068,9 @@ function seedDemoData() {
   });
   withLock_(() => {
     const sh = sheet_(SHEET_TX);
-    sh.getRange(sh.getLastRow() + 1, 1, rows.length, TX_HEADERS.length).setValues(rows);
+    const r0 = sh.getLastRow() + 1;
+    sh.getRange(r0, 1, rows.length, 1).setNumberFormat('@');
+    sh.getRange(r0, 1, rows.length, TX_HEADERS.length).setValues(rows);
   });
   return rows.length;
 }
