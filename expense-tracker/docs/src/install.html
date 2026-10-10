@@ -382,7 +382,8 @@ const STEPS = [
       <tr><td>"Script function not found: doGet"</td><td>Code.gs chưa được lưu hoặc dán thiếu. Dán lại, lưu, tạo phiên bản mới</td></tr>
       <tr><td>"Bạn cần có quyền truy cập" khi mở link</td><td>Đăng nhập đúng tài khoản Google đã tạo app (trên điện thoại kiểm tra trong Chrome/Safari)</td></tr>
       <tr><td>Thông báo "Gemini lỗi, đã dùng bộ tách offline: hết hạn mức"</td><td>Hết lượt miễn phí trong ngày. App vẫn chạy offline, hôm sau tự hoạt động lại</td></tr>
-      <tr><td>"Gemini HTTP 400 … API key not valid"</td><td>Copy lại key ở AI Studio, sửa thuộc tính <b>GEMINI_API_KEY</b> (không có dấu cách thừa)</td></tr>
+      <tr><td>"Gemini: API key không hợp lệ hoặc chưa có quyền…"</td><td>Copy lại key ở AI Studio, sửa thuộc tính <b>GEMINI_API_KEY</b> (không có dấu cách thừa)</td></tr>
+      <tr><td>"Gemini đang quá tải hoặc gián đoạn…"</td><td>Máy chủ AI tạm lỗi. App tự dùng bộ tách offline; thử lại sau ít phút</td></tr>
       <tr><td>Sửa code xong nhưng app không đổi</td><td>Chưa tạo <b>Phiên bản mới</b> khi triển khai (xem mục Cập nhật)</td></tr>
       <tr><td>Lỗi khác</td><td>Chụp màn hình hoặc copy nguyên văn thông báo, gửi cho Claude</td></tr>
     </table></div>

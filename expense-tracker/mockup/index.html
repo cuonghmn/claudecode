@@ -287,7 +287,7 @@ const BIG_ITEM_THRESHOLD = 1000000;
 const FALLBACK_MODELS = ['claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1', 'claude-sonnet-5-5'];
 
 const DEFAULT_CATEGORIES = [
-  ['Ăn uống', '🍜', 4000000, 'ăn,phở,bún,cơm,mì,bánh mì,trưa,tối,sáng,cafe,cà phê,coffee,trà sữa,trà,nước,nhậu,bia,lẩu,nướng,highland,starbucks,phúc long,grabfood,shopeefood,đi chợ,siêu thị,winmart,bách hóa xanh,trái cây', KIND_SPEND],
+  ['Ăn uống', '🍜', 4000000, 'ăn,phở,bún,cơm,mì,bánh mì,trưa,tối,sáng,cafe,cà phê,coffee,trà sữa,trà,nước,nhậu,bia,lẩu,nướng,highland,highlands,starbucks,phúc long,grabfood,shopeefood,đi chợ,siêu thị,winmart,bách hóa xanh,trái cây', KIND_SPEND],
   ['Đi lại', '🛵', 1000000, 'grab,be,xanh sm,taxi,xăng,gửi xe,vé xe,xe buýt,bus,metro,máy bay,vé máy bay,rửa xe,sửa xe,thay nhớt,cầu đường', KIND_SPEND],
   ['Nhà ở & Hóa đơn', '🏠', 6000000, 'tiền nhà,thuê nhà,điện,tiền điện,tiền nước,internet,wifi,cước,điện thoại,4g,gas,phí quản lý,chung cư', KIND_SPEND],
   ['Mua sắm', '🛍️', 2000000, 'mua,quần,áo,giày,dép,túi,shopee,lazada,tiki,tiktok shop,đồ dùng,mỹ phẩm,cắt tóc', KIND_SPEND],
@@ -440,7 +440,7 @@ function getCategories_() {
       name: String(r[0]).trim(),
       icon: String(r[1] || '•'),
       budget: Number(r[2]) || 0,
-      keywords: String(r[3] || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
+      keywords: String(r[3] || '').normalize('NFC').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),
       kind: String(r[4]).trim() === KIND_SAVE ? 'save' : 'spend'
     }));
 }
@@ -797,11 +797,11 @@ function addTransactions(items) {
 }
 
 /** ID giao dịch luôn bắt đầu bằng chữ "t" để Google Sheets không hiểu nhầm thành số. */
-function newId_() { return 't' + Utilities.getUuid().replace(/-/g, '').slice(0, 7); }
+function newId_() { return 't' + Utilities.getUuid().replace(/-/g, '').slice(0, 12); }   // 48 bit: gần như không thể trùng
 
 /** Chữ bắt đầu bằng = + - @ sẽ bị Sheets hiểu là công thức → thêm dấu ' ở đầu (Sheets ẩn dấu này khi hiển thị). */
-function sheetText_(v) { v = String(v || ''); return /^[=+\-@]/.test(v) ? "'" + v : v; }
-function fromSheetText_(v) { v = String(v || ''); return /^'[=+\-@]/.test(v) ? v.slice(1) : v; }
+function sheetText_(v) { v = String(v || ''); return /^[=+\-@']/.test(v) ? "'" + v : v; }   // dấu ' ở đầu cũng bị Sheets ẩn
+function fromSheetText_(v) { v = String(v || ''); return /^'[=+\-@']/.test(v) ? v.slice(1) : v; }
 
 function findRow_(sh, id) {
   const cell = sh.getRange('A:A').createTextFinder(String(id)).matchEntireCell(true).findNext();
@@ -887,7 +887,7 @@ function getCategoryList(month) {
 
 /** Thêm mới (không có oldName) hoặc sửa danh mục. Đổi tên thì cập nhật luôn các khoản chi cũ. */
 function saveCategory(c) {
-  const name = String(c.name || '').trim().replace(/\s+/g, ' ');
+  const name = String(c.name || '').normalize('NFC').trim().replace(/\s+/g, ' ');
   if (!name) throw new Error('Hãy nhập tên danh mục.');
   if (name.length > 40) throw new Error('Tên danh mục tối đa 40 ký tự.');
   const icon = String(c.icon || '').trim().slice(0, 8) || '📌';
@@ -986,6 +986,7 @@ function parseInput(text) {
 
 /** Bộ tách theo quy tắc — chạy không cần API. Hiểu: 45k, 1tr2, 1.200.000, 2,5tr, hôm qua, 05/10. */
 function parseLocal_(text, cats, today) {
+  text = String(text).normalize('NFC');   // gõ tổ hợp (Unikey tổ hợp, macOS) → dạng dựng sẵn để khớp từ khóa
   // Tách khoản: xuống dòng, ";", " + ", " và ", dấu phẩy. Dấu phẩy nằm GIỮA 2 chữ số (2,5tr · 1,200,000) là số, không tách.
   const segments = String(text).split(/\n|;|,(?!\d)|(?<=[^\d\s]),(?=\d)|\s\+\s|\svà\s/i).map(s => s.trim()).filter(Boolean);
   const out = [];
@@ -1012,7 +1013,8 @@ function parseLocal_(text, cats, today) {
     let amount = 0, m;
     const END = '(?=[^a-zà-ỹ]|$)';
     // Thứ tự ưu tiên: "1tr2" (phần lẻ dính liền, 1–3 chữ số) → "5tr" → "45k" → "2m" (m có thể là mét nên xét sau k) → số trơn
-    if ((m = s.match(new RegExp('(\\d+)\\s*(?:tr|triệu)(\\d{1,3})(?![\\d.,])' + END)))) {
+    if ((m = s.match(new RegExp('(\\d+)\\s*(?:tr|triệu)(\\d{1,3})(?!\\d|[.,]\\d)' + END))) ||
+        (m = s.match(/(\d+)\s*(?:tr|triệu)\s+(\d{1,3})[\s.,!]*$/))) {   // "1 triệu 2" ở cuối câu (không phải "5tr 2 tháng")
       amount = parseFloat(m[1] + '.' + m[2]) * 1e6;
     } else if ((m = s.match(new RegExp('(\\d+(?:[.,]\\d+)?)\\s*(?:tr|triệu)' + END)))) {
       amount = parseFloat(m[1].replace(',', '.')) * 1e6;
@@ -1039,7 +1041,7 @@ function parseLocal_(text, cats, today) {
       if (methodRules[i][0].test(s)) { method = methodRules[i][1]; s = s.replace(methodRules[i][0], ' '); break; }
     }
 
-    const desc = s.replace(/(^|\s)(tiền|hết|mất|trả|chi)(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim();
+    const desc = s.replace(/(^|\s)(tiền|hết|mất|trả|chi)(?=\s|$)/g, ' ').replace(/\s+/g, ' ').trim().replace(/^[\s.,;:!?-]+|[\s.,;:!?-]+$/g, '');
     out.push({
       date: date || carryDate || today,
       amount: Math.round(amount),
@@ -1063,10 +1065,13 @@ function guessCategory_(text, cats) {
   return best;
 }
 
-/** Có từ/cụm từ k đứng riêng trong text không (không khớp "ăn" bên trong "căn", "be" trong "beer"). */
+/**
+ * Có từ/cụm từ k đứng riêng trong text không (không khớp "ăn" bên trong "căn", "be" trong "beer").
+ * Chỉ chữ cái (kể cả dấu) mới nối liền từ; chữ số là ranh giới nên "phở55k" vẫn khớp "phở".
+ */
 function hasWord_(text, k) {
   const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp('(^|[^\\p{L}\\p{N}])' + esc + '(?=$|[^\\p{L}\\p{N}])', 'u').test(text);
+  return new RegExp('(^|[^\\p{L}\\p{M}])' + esc + '(?=$|[^\\p{L}\\p{M}])', 'u').test(text);
 }
 
 /* ============================ AI: Gemini (free) hoặc Claude ============================ */
@@ -1103,7 +1108,10 @@ function safeJson_(text) { try { return JSON.parse(text); } catch (e) { return n
 function aiHttpError_(name, code, json) {
   const detail = json && json.error && json.error.message ? ' (' + String(json.error.message).slice(0, 120) + ')' : '';
   if (code === 429) return name + ' hết hạn mức (quá nhiều lượt), thử lại sau [429]';
-  if (code === 400 || code === 401 || code === 403) return name + ': API key không hợp lệ hoặc chưa có quyền, kiểm tra lại key trong Script properties [' + code + ']' + detail;
+  const msg = json && json.error && String(json.error.message || '');
+  if (code === 401 || code === 403 || (code === 400 && /api[ _-]?key/i.test(msg)))
+    return name + ': API key không hợp lệ hoặc chưa có quyền, kiểm tra lại key trong Script properties [' + code + ']' + detail;
+  if (code === 400) return name + ' không xử lý được yêu cầu này, thử lại hoặc ghi bằng nhập tay [400]' + detail;
   if (code >= 500) return name + ' đang quá tải hoặc gián đoạn, thử lại sau ít phút [' + code + ']';
   return name + ' báo lỗi [' + code + ']' + detail;
 }
@@ -1130,7 +1138,8 @@ function callGemini_(task) {
   const cand = (json.candidates || [])[0];
   if (!cand || !cand.content) throw new Error('Gemini không trả kết quả (' + (cand && cand.finishReason || (json.promptFeedback && json.promptFeedback.blockReason) || 'không rõ') + ')');
   if (cand.finishReason === 'MAX_TOKENS') throw new Error('Phản hồi bị cắt do quá dài');
-  const text = cand.content.parts.filter(p => p.text && !p.thought).map(p => p.text).join('');
+  const text = (cand.content.parts || []).filter(p => p.text && !p.thought).map(p => p.text).join('');
+  if (!text) throw new Error('Gemini không trả kết quả, thử lại sau');
   if (!task.schema) return text;
   const obj = safeJson_(text);
   if (!obj) throw new Error('Gemini trả về dữ liệu không đọc được, thử lại sau');
@@ -1335,9 +1344,13 @@ function removeDemoData() {
     const n = sh.getLastRow() - 1;
     if (n < 1) return 0;
     const range = sh.getRange(2, 1, n, TX_HEADERS.length);
-    const keep = range.getValues().filter(r => r[6] !== 'DEMO');
+    const keep = range.getValues().filter(r => r[6] !== 'DEMO')
+      .map(r => { r[4] = sheetText_(r[4]); r[6] = sheetText_(r[6]); return r; });   // ghi lại không biến mô tả "=..." thành công thức
     range.clearContent();
-    if (keep.length) sh.getRange(2, 1, keep.length, TX_HEADERS.length).setValues(keep);
+    if (keep.length) {
+      sh.getRange(2, 1, keep.length, 1).setNumberFormat('@');
+      sh.getRange(2, 1, keep.length, TX_HEADERS.length).setValues(keep);
+    }
     return n - keep.length;
   });
 }
