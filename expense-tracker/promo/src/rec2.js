@@ -72,12 +72,15 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await P('step', 0, true); await P('step', 1);
   await tap(fr.locator('#btnParse')); await fr.locator('#previewList .preview').first().waitFor();
   await P('step', 1, true); await P('step', 2);
+  await hideCur(); await sleep(200);
+  await fr.locator('#previewList').evaluate(e => e.scrollIntoView({ block: 'center', behavior: 'smooth' })); await sleep(LONG ? 900 : 700);
+  const pb = await fr.locator('#previewList').boundingBox();
+  await page.evaluate(b => ring(b, '✨ AI tự bóc tách'), pb);
   if (LONG) {
-    await hideCur(); await sleep(300);
-    await scrollTo(fr.locator('#previewWrap')); await sleep(900);
     const items = await appFrame.evaluate(() => S.preview.map(x => '<div style="margin:4px 0">' + x.description + ' · <b>' + x.amount.toLocaleString('vi-VN') + 'đ</b> → ' + x.category + '</div>').join(''));
-    await P('card', 'AI tách được 2 khoản', items); await sleep(3000);
-  } else await sleep(600);
+    await P('card', 'AI tách được 2 khoản', items); await sleep(3400);
+  } else await sleep(1500);
+  await page.evaluate(() => ring(null)); await sleep(300);
   await tap(fr.locator('#btnSave')); await fr.locator('.toast').first().waitFor();
   await P('step', 2, true); await hideCur();
   if (LONG) { await P('card', 'Đã lưu. Lỡ tay?', 'Bấm <b>Hoàn tác</b> trong 5 giây'); await scrollTo(fr.locator('#recentRange')); await sleep(2200); }

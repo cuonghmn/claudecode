@@ -23,6 +23,11 @@ html,body{margin:0;width:1080px;height:1080px;overflow:hidden;font-family:"Liber
 #card .k{font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0f766e;margin-bottom:6px}
 #card b{color:#b45309}
 #title .nw{white-space:nowrap}
+#hl{position:absolute;left:70px;top:90px;width:504px;height:900px;border-radius:40px;overflow:hidden;pointer-events:none;z-index:8}
+#ring{position:absolute;border:4px solid #f59e0b;border-radius:18px;box-shadow:0 0 0 9999px rgba(6,24,22,.5),0 0 26px rgba(245,158,11,.7);opacity:0;transition:opacity .35s,transform .35s;transform:scale(1.04)}
+#ring.on{opacity:1;transform:none}
+#ringTag{position:absolute;z-index:10;pointer-events:none;background:#f59e0b;color:#2b1a00;font-weight:700;font-size:22px;padding:8px 16px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:translateY(8px);transition:opacity .35s,transform .35s;white-space:nowrap}
+#ringTag.on{opacity:1;transform:none}
 .fade{transition:opacity .35s,transform .35s}
 #panel.out .fade{opacity:0;transform:translateY(10px)}
 #cur{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(245,158,11,.45);border:3px solid #f59e0b;
@@ -44,6 +49,7 @@ html,body{margin:0;width:1080px;height:1080px;overflow:hidden;font-family:"Liber
   <ul id="steps" class="fade"></ul>
   <div id="card"></div>
 </div>
+<div id="hl"><div id="ring"></div></div><div id="ringTag"></div>
 <div id="cur"></div>
 <div id="end"><div class="big">No-code <span>→</span><br>Vibe-code</div><p id="endP"></p><div class="tag">📒 Sổ chi tiêu · tự làm cùng Claude</div></div>
 <script>
@@ -56,6 +62,12 @@ function scene(o){var p=document.getElementById('panel');p.classList.add('out');
     p.classList.remove('out');},380)}
 function step(i,done){var li=document.querySelectorAll('#steps li')[i];if(!li)return;li.classList.add('on');if(done){li.classList.add('done');li.querySelector('.b').textContent='✓'}}
 function card(k,html){var c=document.getElementById('card');c.innerHTML='<div class="k">'+k+'</div>'+html;c.classList.add('on')}
+function ring(b,label){var r=document.getElementById('ring'),t=document.getElementById('ringTag');
+  if(!b){r.classList.remove('on');t.classList.remove('on');return}
+  var pad=8,x=b.x-70-pad,y=Math.max(b.y-90-pad,6),h=Math.min(b.y+b.height-90+pad,894)-y;
+  r.style.left=x+'px';r.style.top=y+'px';r.style.width=(b.width+2*pad)+'px';r.style.height=h+'px';r.classList.add('on');
+  t.textContent=label;t.style.left=(b.x+b.width/2)+'px';t.style.top=(90+y-22)+'px';t.style.marginLeft='-'+0+'px';
+  t.classList.add('on');t.style.left=(b.x+b.width/2-t.offsetWidth/2)+'px'}
 function dim(on){document.getElementById('phone').classList.toggle('dim',on)}
 function end(p){document.getElementById('endP').innerHTML=p;document.getElementById('end').classList.add('on')}
 </script></body></html>
