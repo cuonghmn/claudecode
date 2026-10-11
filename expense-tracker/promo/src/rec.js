@@ -1,0 +1,63 @@
+const { chromium } = require('playwright');
+const path = require('path'), fs = require('fs');
+const dir = __dirname;
+const APP = 'file:///home/user/claudecode/expense-tracker/docs/src/app-tour.html';
+fs.writeFileSync(path.join(dir,'w.html'), fs.readFileSync(path.join(dir,'wrapper.html'),'utf8').replace('APP_URL', APP));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+(async () => {
+  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' }).catch(() => chromium.launch());
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 640 }, deviceScaleFactor: 3,
+    recordVideo: { dir: path.join(dir,'raw'), size: { width: 1080, height: 1920 } } });
+  const tCreate = Date.now();
+  const page = await ctx.newPage();
+  await page.goto('file://' + path.join(dir,'w.html'));
+  const fr = page.frameLocator('#app');
+  await fr.locator('#quick').waitFor();
+  await sleep(1200);
+  const t0 = Date.now();
+  const T = s => sleep(Math.max(0, t0 + s*1000 - Date.now()));
+  const cap = (t,s) => page.evaluate(([t,s]) => cap(t,s), [t,s||'']);
+  const tap = async (loc) => {
+    const el = loc.first(); await el.scrollIntoViewIfNeeded();
+    const b = await el.boundingBox();
+    // boundingBox of frame locator is in page coords already
+    await page.evaluate(([x,y]) => { const c=document.getElementById('cur'); c.style.opacity=1; c.style.left=x+'px'; c.style.top=y+'px'; }, [b.x+b.width/2, b.y+b.height/2]);
+    await sleep(450);
+    await page.evaluate(() => document.getElementById('cur').classList.add('tap'));
+    await sleep(140);
+    await el.click();
+    await page.evaluate(() => document.getElementById('cur').classList.remove('tap'));
+  };
+  const hideCur = () => page.evaluate(() => document.getElementById('cur').style.opacity = 0);
+
+  const scrollTo = (loc) => loc.first().evaluate(e => e.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  await cap('Ghi chi tiêu mất 5 giây', 'Không cần nhớ, không cần bảng tính');
+  await sleep(1500); await tap(fr.locator('#quick'));
+  await cap('Gõ như nhắn tin', 'AI tự tách khoản và chọn danh mục');
+  await fr.locator('#quick').pressSequentially('trưa phở 55k, grab 32k', { delay: 55 });
+  await sleep(500); await tap(fr.locator('#btnParse'));
+  await fr.locator('#previewList .preview').first().waitFor();
+  await sleep(1300); await tap(fr.locator('#btnSave'));
+  await fr.locator('.toast').first().waitFor();
+  await sleep(500);
+  await cap('Xem lại theo từng ngày', 'Sửa hoặc hoàn tác chỉ 1 chạm');
+  await hideCur();
+  await scrollTo(fr.locator('#recentRange'));
+  await sleep(2300);
+  await fr.locator('.toast').evaluateAll(els => els.forEach(e => e.remove()));
+  await cap('Biết tiền đi đâu', 'Biểu đồ theo danh mục và ngân sách còn lại');
+  await sleep(300); await tap(fr.locator('nav [data-tab="dash"]'));
+  await fr.locator('#dash .kpis').waitFor();
+  await hideCur();
+  await sleep(1500);
+  await scrollTo(fr.locator('.card', { hasText: 'Cơ cấu chi tiêu' }));
+  await sleep(2200);
+  await page.evaluate(() => document.getElementById('end').classList.add('on'));
+  await sleep(2600);
+  const rawLen = (Date.now() - t0) / 1000;
+  fs.writeFileSync(path.join(dir,'rawlen.txt'), String(rawLen));
+  const offset = (t0 - tCreate) / 1000;
+  await ctx.close(); await browser.close();
+  fs.writeFileSync(path.join(dir,'offset.txt'), String(offset));
+  console.log('offset', offset);
+})();

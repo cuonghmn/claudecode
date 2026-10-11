@@ -1,0 +1,22 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=360,initial-scale=1">
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:360px;height:640px;overflow:hidden;background:#0f766e;font-family:"Liberation Sans","DejaVu Sans",Arial,sans-serif}
+#cap{position:absolute;left:0;top:0;width:360px;height:112px;background:linear-gradient(180deg,#0f766e,#0b5f58);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:0 22px}
+#cap b{display:block;font-size:23px;line-height:1.2;font-weight:700;letter-spacing:-.2px;transition:opacity .35s,transform .35s}
+#cap small{display:block;margin-top:5px;font-size:13px;opacity:.85;transition:opacity .35s}
+#cap.out b,#cap.out small{opacity:0;transform:translateY(6px)}
+iframe{position:absolute;left:0;top:112px;width:360px;height:528px;border:0;background:#fff;border-top-left-radius:18px;border-top-right-radius:18px}
+#cur{position:absolute;left:0;top:0;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:rgba(245,158,11,.4);border:2px solid #f59e0b;pointer-events:none;z-index:9;transition:left .55s cubic-bezier(.4,0,.2,1),top .55s cubic-bezier(.4,0,.2,1),transform .15s;opacity:0}
+#cur.tap{transform:scale(.7)}
+#end{pointer-events:none;position:absolute;inset:0;background:#0f766e;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 28px;opacity:0;transition:opacity .5s;z-index:20}
+#end.on{opacity:1}
+#end .ic{font-size:54px;margin-bottom:10px}#end h1{margin:0 0 10px;font-size:34px}#end p{margin:0;font-size:16px;line-height:1.5;opacity:.92}
+#end .pill{margin-top:22px;background:#f59e0b;color:#2b1a00;font-weight:700;border-radius:999px;padding:9px 18px;font-size:14px}
+</style></head><body>
+<div id="cap"><b id="capT"></b><small id="capS"></small></div>
+<iframe id="app" src="APP_URL"></iframe>
+<div id="cur"></div>
+<div id="end"><div class="ic">📒</div><h1>Sổ chi tiêu</h1><p>Google Sheet + AI Gemini miễn phí<br>Tự xây, tự dùng, trên điện thoại</p><div class="pill">Làm cùng Claude</div></div>
+<script>
+function cap(t,s){var c=document.getElementById('cap');c.classList.add('out');setTimeout(function(){document.getElementById('capT').textContent=t;document.getElementById('capS').textContent=s||'';c.classList.remove('out')},350)}
+</script></body></html>

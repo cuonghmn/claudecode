@@ -1,0 +1,61 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;width:1080px;height:1080px;overflow:hidden;font-family:"Liberation Sans","DejaVu Sans",Arial,sans-serif;color:#fff;
+  background:radial-gradient(120% 90% at 85% 10%,#14907f 0%,#0f766e 35%,#0a4f49 100%)}
+.phone{position:absolute;left:58px;top:78px;width:528px;height:924px;border-radius:52px;background:#0a1312;padding:12px;
+  box-shadow:0 30px 70px rgba(0,0,0,.45),inset 0 0 0 2px #24332f;transition:opacity .5s,filter .5s}
+.phone.dim{opacity:.28;filter:blur(1px)}
+.screen{width:504px;height:900px;border-radius:40px;overflow:hidden;background:#fff;position:relative}
+.screen iframe{position:absolute;left:0;top:0;width:360px;height:643px;border:0;transform:scale(1.4);transform-origin:0 0;background:#fff}
+#panel{position:absolute;left:640px;top:0;width:400px;height:1080px;display:flex;flex-direction:column;justify-content:center}
+.eyebrow{font-size:19px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#fcd34d;margin-bottom:18px}
+#title{font-size:47px;line-height:1.12;font-weight:700;letter-spacing:-.5px;margin:0}
+#sub{font-size:24px;line-height:1.4;opacity:.9;margin-top:18px}
+#steps{list-style:none;margin:30px 0 0;padding:0}
+#steps li{display:flex;gap:14px;align-items:flex-start;font-size:26px;line-height:1.3;margin:0 0 18px;opacity:.55;transition:opacity .3s}
+#steps li .b{flex:none;width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.6);display:grid;place-items:center;font-size:19px;font-weight:700;transition:all .3s}
+#steps li.on{opacity:1}
+#steps li.done .b{background:#f59e0b;border-color:#f59e0b;color:#2b1a00}
+#card{margin-top:26px;background:#fff;color:#14211f;border-radius:20px;padding:18px 20px;font-size:24px;line-height:1.4;box-shadow:0 14px 34px rgba(0,0,0,.28);
+  opacity:0;transform:translateY(14px) scale(.97);transition:opacity .4s,transform .4s}
+#card.on{opacity:1;transform:none}
+#card .k{font-size:15px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0f766e;margin-bottom:6px}
+#card b{color:#b45309}
+#title .nw{white-space:nowrap}
+.fade{transition:opacity .35s,transform .35s}
+#panel.out .fade{opacity:0;transform:translateY(10px)}
+#cur{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(245,158,11,.45);border:3px solid #f59e0b;
+  pointer-events:none;z-index:9;transition:left .5s cubic-bezier(.4,0,.2,1),top .5s cubic-bezier(.4,0,.2,1),transform .15s,opacity .3s;opacity:0}
+#cur.tap{transform:scale(.65)}
+#end{pointer-events:none;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:radial-gradient(120% 90% at 50% 30%,#14907f 0%,#0f766e 40%,#0a4f49 100%);opacity:0;transition:opacity .6s;z-index:20;padding:0 90px}
+#end.on{opacity:1}
+#end .big{font-size:84px;font-weight:700;letter-spacing:-1px;line-height:1.1}
+#end .big span{color:#fcd34d}
+#end p{font-size:30px;line-height:1.45;opacity:.92;margin:26px 0 0}
+#end .tag{margin-top:40px;font-size:22px;font-weight:700;background:#f59e0b;color:#2b1a00;border-radius:999px;padding:12px 26px}
+</style></head><body>
+<div class="phone" id="phone"><div class="screen"><iframe id="app" src="APP_URL"></iframe></div></div>
+<div id="panel">
+  <div class="eyebrow fade" id="eb"></div>
+  <h1 id="title" class="fade"></h1>
+  <div id="sub" class="fade"></div>
+  <ul id="steps" class="fade"></ul>
+  <div id="card"></div>
+</div>
+<div id="cur"></div>
+<div id="end"><div class="big">No-code <span>→</span><br>Vibe-code</div><p id="endP"></p><div class="tag">📒 Sổ chi tiêu · tự làm cùng Claude</div></div>
+<script>
+function scene(o){var p=document.getElementById('panel');p.classList.add('out');document.getElementById('card').classList.remove('on');
+  setTimeout(function(){
+    document.getElementById('eb').textContent=o.eb||'';
+    document.getElementById('title').innerHTML=o.title||'';
+    document.getElementById('sub').innerHTML=o.sub||'';
+    document.getElementById('steps').innerHTML=(o.steps||[]).map(function(s,i){return '<li><span class="b">'+(i+1)+'</span><span>'+s+'</span></li>'}).join('');
+    p.classList.remove('out');},380)}
+function step(i,done){var li=document.querySelectorAll('#steps li')[i];if(!li)return;li.classList.add('on');if(done){li.classList.add('done');li.querySelector('.b').textContent='✓'}}
+function card(k,html){var c=document.getElementById('card');c.innerHTML='<div class="k">'+k+'</div>'+html;c.classList.add('on')}
+function dim(on){document.getElementById('phone').classList.toggle('dim',on)}
+function end(p){document.getElementById('endP').innerHTML=p;document.getElementById('end').classList.add('on')}
+</script></body></html>
