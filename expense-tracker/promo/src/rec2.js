@@ -58,29 +58,35 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   // ---- Mở đầu ----
   if (LONG) {
     await P('dim', true);
-    await P('scene', { eb: 'Vấn đề của mình', title: 'Cuối tháng nào cũng hỏi:<br>tiền đi đâu hết?' }); await sleep(2700);
-    await P('scene', { eb: 'Vấn đề của mình', title: 'App thì nhiều,<br>nhưng chưa cái nào vừa ý', sub: 'Rườm rà, không đúng cách mình chi tiêu' }); await sleep(2700);
-    await P('scene', { eb: 'Thử cách khác', title: 'Tự làm bằng Claude.<br>Không cần biết code.' }); await sleep(1500);
-    await P('dim', false); await sleep(1100);
+    await P('scene', { eb: 'Vấn đề của mình', title: 'Cuối tháng nào cũng hỏi:<br>tiền đi đâu hết?' }); await sleep(3000);
+    await P('scene', { eb: 'Vấn đề của mình', title: 'App thì nhiều,<br>nhưng chưa cái nào vừa ý', sub: 'Rườm rà, không đúng cách mình chi tiêu' }); await sleep(3200);
+    await P('scene', { eb: 'Thử cách khác', title: 'Tự làm bằng Claude.<br>Không cần biết code.' }); await sleep(2000);
+    await P('dim', false); await sleep(1000);
   } else {
     await P('scene', { eb: 'Dự án cá nhân', title: '<span class="nw">Không biết code.</span><br>Vẫn tự làm app cho mình.' }); await sleep(2000);
   }
   // ---- 1. Nhập bằng AI ----
   await P('scene', { eb: '1 · Nhập bằng AI', title: 'Gõ một câu,<br>AI tự bóc tách', steps: ['Gõ như nhắn tin', 'AI tách khoản, chọn danh mục', 'Xem lại và bấm Lưu'] });
-  await sleep(400); await P('step', 0); await tap(fr.locator('#quick'));
-  await fr.locator('#quick').pressSequentially('trưa phở 55k, grab 32k', { delay: LONG ? 55 : 40 });
+  await sleep(LONG ? 1000 : 400); await P('step', 0); await tap(fr.locator('#quick'));
+  await fr.locator('#quick').pressSequentially('trưa phở 55k, grab 32k', { delay: LONG ? 70 : 40 });
   await P('step', 0, true); await P('step', 1);
   await tap(fr.locator('#btnParse')); await fr.locator('#previewList .preview').first().waitFor();
-  await P('step', 1, true); await P('step', 2); await sleep(LONG ? 1500 : 600);
+  await P('step', 1, true); await P('step', 2);
+  if (LONG) {
+    await hideCur(); await sleep(300);
+    await scrollTo(fr.locator('#previewWrap')); await sleep(900);
+    const items = await appFrame.evaluate(() => S.preview.map(x => '<div style="margin:4px 0">' + x.description + ' · <b>' + x.amount.toLocaleString('vi-VN') + 'đ</b> → ' + x.category + '</div>').join(''));
+    await P('card', 'AI tách được 2 khoản', items); await sleep(3000);
+  } else await sleep(600);
   await tap(fr.locator('#btnSave')); await fr.locator('.toast').first().waitFor();
   await P('step', 2, true); await hideCur();
-  if (LONG) { await P('card', 'Lỡ tay?', 'Bấm <b>Hoàn tác</b> trong 5 giây'); await scrollTo(fr.locator('#recentRange')); await sleep(2200); }
+  if (LONG) { await P('card', 'Đã lưu. Lỡ tay?', 'Bấm <b>Hoàn tác</b> trong 5 giây'); await scrollTo(fr.locator('#recentRange')); await sleep(2200); }
   else await sleep(700);
   await rmToast();
   // ---- 2. Ngân sách ----
   await P('scene', { eb: '2 · Ngân sách', title: 'Ngân sách tháng<br>cho từng mục', steps: LONG ? ['Hạn mức riêng mỗi danh mục', 'Tháng nào chi nhiều, nâng riêng tháng đó', 'Vượt mức là có cảnh báo'] : ['Hạn mức riêng mỗi danh mục', 'Mỗi tháng một mức khác nhau'] });
   await tap(fr.locator('nav [data-tab="budget"]')); await fr.locator('#budgetList .cat-row').first().waitFor(); await hideCur();
-  await P('step', 0, true); await sleep(LONG ? 900 : 600);
+  await P('step', 0, true); await sleep(LONG ? 1200 : 600);
   if (LONG) {
     await P('step', 1);
     const nx = fr.locator('#budStrip .mchip.now + .mchip');
@@ -88,21 +94,21 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const inp = fr.locator('#budgetList .cat-row', { hasText: 'Gia đình' }).locator('input');
     await tap(inp); await inp.fill(''); await inp.pressSequentially('5000000', { delay: 60 }); await inp.evaluate(e => { e.dispatchEvent(new Event('change', { bubbles: true })); e.blur(); });
     await hideCur(); await P('step', 1, true); await P('card', 'Ví dụ', 'Tháng sau có đám cưới: <b>Gia đình &amp; Hiếu hỉ 5.000.000đ</b>, chỉ áp dụng tháng đó');
-    await sleep(2000); await P('step', 2, true); await sleep(900);
+    await sleep(2600); await P('step', 2, true); await sleep(1000);
   } else { await P('step', 1, true); await sleep(900); }
   // ---- 3. Dashboard + AI ----
   await P('scene', { eb: '3 · Dashboard + AI', title: 'Bấm <span class="nw" style="color:#fcd34d">Tạo nhận xét</span><br>để AI khuyến nghị', steps: LONG ? ['Tổng quan chi tiêu cả tháng', 'AI đọc số liệu của bạn', 'Gợi ý cụ thể để giữ ngân sách'] : [] });
   await tap(fr.locator('nav [data-tab="dash"]')); await fr.locator('#dash .kpis').waitFor(); await hideCur();
   if (LONG) {
-    await P('step', 0, true); await sleep(900);
-    await scrollTo(fr.locator('.card', { hasText: 'Cơ cấu chi tiêu' })); await sleep(1800);
+    await sleep(500); await P('step', 0, true); await sleep(800);
+    await scrollTo(fr.locator('.card', { hasText: 'Cơ cấu chi tiêu' })); await sleep(2000);
     await P('step', 1);
   } else await sleep(400);
   await tap(fr.locator('#btnReview')); await fr.locator('#review h3').first().waitFor(); await hideCur();
   await scrollTo(fr.locator('#review')); await sleep(500);
   const tip = await fr.locator('#review').evaluate(el => { const hs = [...el.querySelectorAll('h3')]; const h = hs.find(x => /Hành động/.test(x.textContent)); const ul = h && h.nextElementSibling; return ul && ul.querySelector('li') ? ul.querySelector('li').innerHTML : ''; });
   if (LONG) { await P('step', 1, true); await P('step', 2, true); }
-  await P('card', 'AI gợi ý', tip); await sleep(LONG ? 3200 : 2100);
+  await P('card', 'AI gợi ý', tip); await sleep(LONG ? 4000 : 2100);
   // ---- Kết ----
   await P('end', LONG ? 'Vấn đề nhỏ hằng ngày của bạn,<br>bạn cũng tự làm được.' : 'Vấn đề hằng ngày của mình,<br>tự làm app cho mình.');
   await sleep(LONG ? 3000 : 2000);

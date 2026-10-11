@@ -22,5 +22,5 @@ Ghi chú:
 - Nếu chưa cài lên Google thật, đổi "bản mình đang dùng thử" thành "bản mình vừa làm".
 - Clip quay trên bản mẫu với dữ liệu giả. Đoạn nhận xét AI trong clip là nội dung minh họa, dựng từ số liệu mẫu (môi trường quay không gọi được Gemini). Khi chạy thật, nội dung do Gemini sinh ra theo cùng cấu trúc.
 
-Files: so-chi-tieu-15s-vuong.mp4 (Facebook), so-chi-tieu-30s-vuong.mp4 (LinkedIn/nhóm), so-chi-tieu-15s.mp4 (9:16 cho Reels/Stories).
-Tạo lại clip: xem src/ (rec2.js 15|30, music.py, square.html).
+Files: so-chi-tieu-15s-vuong.mp4 (Facebook), so-chi-tieu-40s-vuong.mp4 (LinkedIn/nhóm), so-chi-tieu-15s.mp4 (9:16 cho Reels/Stories).
+Tạo lại clip: xem src/ (rec2.js 15|30 (bản dài quay ~44s, nén còn 40s), music.py, square.html).
