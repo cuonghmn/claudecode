@@ -1,12 +1,22 @@
-# Ý tưởng: App ghi chi tiêu cá nhân "gõ như nhắn tin"
+# Ý tưởng sản phẩm: App ghi chi tiêu cá nhân "gõ như nhắn tin"
 
-> Prompt gửi nền tảng AI. Copy toàn bộ phần dưới đây.
+> Tài liệu ý tưởng gửi **Product Owner (PO)**. Copy toàn bộ phần dưới đây.
 
 ---
 
-Chào bạn. Tôi muốn nhờ bạn cùng tôi làm một app nhỏ cho nhu cầu cá nhân. Tôi **không phải dân code**. Tôi có một vấn đề hằng ngày và vài ý tưởng. Tôi mong bạn đóng vai **Product Owner + UX designer + developer**: hiểu nỗi đau của tôi, phản biện ý tưởng, đề xuất cách làm phù hợp, rồi mới bắt tay làm.
+**Gửi PO,**
 
-Những gì tôi viết dưới đây là **ý tưởng mở, không phải yêu cầu bắt buộc**. Chỗ nào bạn thấy có cách đơn giản hơn, hay hơn, hoặc thấy tôi đang làm phức tạp quá, cứ nói thẳng.
+Tôi là **chủ ý tưởng và cũng là người dùng cuối** của sản phẩm này. Tôi **không phải dân code**. Tôi có một vấn đề hằng ngày và vài ý tưởng muốn biến thành một app nhỏ cho riêng mình.
+
+**Vai trò trong dự án:**
+
+| Vai trò | Ai | Trách nhiệm |
+|---|---|---|
+| Chủ ý tưởng / Người dùng / Người duyệt | Tôi | Đưa nỗi đau và ý tưởng, trả lời câu hỏi, duyệt phạm vi và bản mẫu, nghiệm thu |
+| Product Owner | Bạn | Phân tích, phản biện, chốt phạm vi với tôi, viết backlog trên Jira, ưu tiên và nghiệm thu cùng tôi |
+| Delivery team | Nhóm làm sản phẩm | Nhận ticket Jira từ PO: thiết kế, làm, kiểm thử, hướng dẫn cài đặt |
+
+Những gì tôi viết dưới đây là **ý tưởng mở, không phải yêu cầu bắt buộc**. Tôi mong bạn phân tích, phản biện, và đề xuất cách làm đơn giản, hiệu quả nhất trước khi chuyển cho delivery team. Chỗ nào bạn thấy tôi đang làm phức tạp quá, cứ nói thẳng.
 
 ## 1. Nỗi đau của tôi
 
@@ -96,19 +106,42 @@ Tôi muốn mở ra là trả lời được ngay mấy câu hỏi:
 - Quản lý thu nhập, nợ, đầu tư chi tiết
 - App cài từ kho ứng dụng (mở bằng trình duyệt trên điện thoại là đủ, nếu bạn thấy hợp lý)
 
-## 6. Tôi muốn làm việc với bạn như thế này
+## 6. Tôi mong PO làm gì
 
+### 6.1. Với tôi (trước khi tạo Jira)
 1. **Tóm tắt lại** cách bạn hiểu nỗi đau và mục tiêu của tôi, trong vài dòng.
 2. **Phản biện:**
    - Ý tưởng nào thừa, nên bỏ hoặc để sau?
    - Còn thiếu gì quan trọng?
    - Chỗ nào làm đơn giản hơn được?
-   - Bản đầu tiên tối thiểu nên gồm những gì?
-3. **Đề xuất nền tảng:** đưa 2–3 phương án (lưu dữ liệu ở đâu, chạy app thế nào, dùng AI nào), mỗi phương án có ưu nhược điểm, chi phí và khuyến nghị của bạn.
-4. **Khi cần tôi quyết định:** hỏi **từng điểm một**, mỗi điểm 2–3 phương án kèm đánh đổi và khuyến nghị. Đừng hỏi dồn một lúc.
-5. Làm một **bản mẫu (mockup) bấm thử được** với dữ liệu giả hợp lý, để tôi trải nghiệm và chỉnh trước khi làm thật.
-6. Khi làm thật, kèm **hướng dẫn cài đặt từng bước** cho người không biết code.
-7. **Tự kiểm thử** trước khi giao: những câu nhập khó, ngày tháng, số tiền lớn, lúc mất AI, lúc chưa có dữ liệu.
+3. **Đề xuất phạm vi bản đầu tiên (MVP)** và những gì để các bản sau.
+4. **Đề xuất hướng nền tảng:** 2–3 phương án (lưu dữ liệu ở đâu, chạy app thế nào, dùng AI nào), mỗi phương án có ưu nhược điểm, chi phí và khuyến nghị. Có thể hỏi ý kiến delivery team về mặt kỹ thuật trước khi trình tôi.
+5. **Khi cần tôi quyết định:** hỏi **từng điểm một**, mỗi điểm 2–3 phương án kèm đánh đổi và khuyến nghị. Đừng hỏi dồn một lúc.
+6. Gửi tôi **bản tóm tắt sản phẩm (product brief) 1 trang** để duyệt. Tôi duyệt xong thì mới tạo Jira.
+
+### 6.2. Backlog Jira cho delivery team
+Cách chia Epic và Story là do bạn quyết. Tôi chỉ gợi ý các nhóm theo trải nghiệm ở mục 3:
+- ghi chép nhanh
+- xem gần đây
+- ngân sách
+- tổng quan
+- AI nhận xét
+- lịch sử
+- cài đặt và hướng dẫn
+
+Mỗi ticket tôi mong có:
+- **User story:** "Là người dùng, tôi muốn… để…"
+- **Bối cảnh / nỗi đau** liên quan (dẫn về mục 1)
+- **Tiêu chí nghiệm thu (Acceptance criteria)**, viết kiểu Cho trước / Khi / Thì, kèm ví dụ thật (ví dụ câu nhập "trưa phở 55k, grab 32k" phải ra 2 khoản)
+- **Quy tắc nghiệp vụ** nếu có (ví dụ: tiền để dành không tính vào tổng chi)
+- **Độ ưu tiên** (MVP hay để sau) và **phụ thuộc** với ticket khác
+- **Ngoài phạm vi** của ticket, để delivery team không làm quá
+
+### 6.3. Cách làm tôi mong delivery team theo
+- Làm **bản mẫu (mockup) bấm thử được** với dữ liệu giả hợp lý trước, để tôi trải nghiệm và chỉnh, rồi mới làm thật.
+- Bàn giao kèm **hướng dẫn cài đặt từng bước** cho người không biết code.
+- **Tự kiểm thử** trước khi giao: những câu nhập khó, ngày tháng, số tiền lớn, lúc mất AI, lúc chưa có dữ liệu.
+- Mọi câu hỏi về nghiệp vụ đi qua PO. Tôi chỉ cần trả lời PO.
 
 ## 7. Tôi sẽ coi là thành công khi
 
@@ -117,4 +150,4 @@ Tôi muốn mở ra là trả lời được ngay mấy câu hỏi:
 - Bất cứ lúc nào mở app, tôi biết **tháng này còn được tiêu bao nhiêu** và **tiền đang đi đâu**.
 - Cuối tháng có ít nhất **1 hành động cụ thể** để tháng sau chi tiêu tốt hơn.
 
-Bạn bắt đầu bằng bước 1 và 2 nhé. Chưa cần viết code.
+**Bước đầu tiên:** bạn làm mục 6.1, bước 1 và 2 nhé. Chưa cần tạo Jira.
