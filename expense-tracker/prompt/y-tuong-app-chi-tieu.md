@@ -57,6 +57,19 @@ Những gì tôi viết dưới đây là **ý tưởng mở, không phải yêu
 - Đang ghi mà nảy ra một loại chi mới (ví dụ "Thú cưng"), tôi muốn **thêm danh mục ngay lúc đó**, không phải đi cài đặt trước.
 - Tôi lo lúc AI lỗi hoặc hết lượt miễn phí thì app không dùng được. Có cách nào để **vẫn ghi được khi không có AI** không?
 
+### 3.1b. Ghi bằng giọng nói
+- Nhiều lúc tôi không tiện gõ: đang cầm đồ, đang đi, hoặc cuối ngày muốn tổng kết một lượt. Tôi hình dung có một **nút micro**: bật lên, nói, rồi AI hiểu và tách thành từng khoản giống như khi gõ.
+- Ví dụ cuối ngày tôi nói: *"Hôm nay sáng ăn phở 50 nghìn, trưa cơm văn phòng 40 nghìn, chiều cà phê 35 nghìn, tối đi grab về 70 nghìn"*. App ra 4 khoản với đúng số tiền, danh mục, ngày hôm nay.
+- Giọng nói chỉ thay cho việc gõ. Tôi **vẫn muốn xem lại và bấm Lưu**, không lưu tự động.
+- Nhờ PO đánh giá giúp tôi:
+  - **Câu nói thường không có dấu phẩy.** Nhận giọng thường ra một câu liền mạch. Cách tách khoản có xử lý được không, hay bắt buộc phải có AI?
+  - **Quyền dùng micro.** Tùy nền tảng chạy app, trình duyệt có thể chặn micro. Cần kiểm tra trên điện thoại thật (Android và iPhone).
+  - **Có nhiều cách làm**, mỗi cách tốn công và chi phí khác nhau:
+    - dùng nút mic có sẵn trên bàn phím điện thoại
+    - nút mic trong app dùng nhận giọng của trình duyệt
+    - ghi âm rồi gửi cho AI nghe trực tiếp
+  - **Làm ở bản đầu (MVP) hay giai đoạn 2?** Trong lúc chờ, tôi tạm dùng nút mic trên bàn phím điện thoại để đọc vào ô nhập.
+
 ### 3.2. Xem lại chi tiêu gần đây
 - Ngay dưới ô nhập, tôi muốn thấy các khoản vừa ghi **gom theo từng ngày**, mỗi ngày có tổng tiền.
 - Chọn nhanh khoảng thời gian: 3 ngày gần đây (tôi nghĩ nên là mặc định), 5 ngày, tuần này, tháng này.
@@ -123,7 +136,7 @@ Tôi muốn mở ra là trả lời được ngay mấy câu hỏi:
 
 ### 6.2. Backlog Jira cho delivery team
 Cách chia Epic và Story là do bạn quyết. Tôi chỉ gợi ý các nhóm theo trải nghiệm ở mục 3:
-- ghi chép nhanh
+- ghi chép nhanh (gõ và giọng nói)
 - xem gần đây
 - ngân sách
 - tổng quan
