@@ -117,7 +117,9 @@ Tôi muốn mở ra là trả lời được ngay mấy câu hỏi:
 3. **Đề xuất phạm vi bản đầu tiên (MVP)** và những gì để các bản sau.
 4. **Đề xuất hướng nền tảng:** 2–3 phương án (lưu dữ liệu ở đâu, chạy app thế nào, dùng AI nào), mỗi phương án có ưu nhược điểm, chi phí và khuyến nghị. Có thể hỏi ý kiến delivery team về mặt kỹ thuật trước khi trình tôi.
 5. **Khi cần tôi quyết định:** hỏi **từng điểm một**, mỗi điểm 2–3 phương án kèm đánh đổi và khuyến nghị. Đừng hỏi dồn một lúc.
-6. Gửi tôi **bản tóm tắt sản phẩm (product brief) 1 trang** để duyệt. Tôi duyệt xong thì mới tạo Jira.
+6. Gửi tôi **bản tóm tắt sản phẩm (product brief) 1 trang** để duyệt.
+
+> **Cổng duyệt:** chỉ tạo Jira sau khi tôi đã duyệt product brief. Nếu sau đó phạm vi thay đổi (thêm hoặc bớt tính năng, đổi nền tảng), PO cập nhật brief và xin tôi duyệt lại trước khi đổi backlog.
 
 ### 6.2. Backlog Jira cho delivery team
 Cách chia Epic và Story là do bạn quyết. Tôi chỉ gợi ý các nhóm theo trải nghiệm ở mục 3:
